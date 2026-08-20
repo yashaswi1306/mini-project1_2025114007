@@ -18,6 +18,7 @@ char* read_line()
         exit(1);
     }
 
+    
     while (1)
     {
         char_read=getchar();

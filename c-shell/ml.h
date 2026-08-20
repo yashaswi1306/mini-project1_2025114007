@@ -32,7 +32,6 @@ typedef enum{
     OP_WORD,
     OP_EOF
 }token_category;
-
 typedef struct
 {
     token_category type;

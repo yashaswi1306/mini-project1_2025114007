@@ -285,6 +285,7 @@ int do_stuff(const char *line,int *cursor, token_def *token_type)
             if (c == '"')
             {
                 next_state=STATE_IN_WORD;
+                
             }
             else
             {
@@ -441,5 +442,5 @@ int do_stuff(const char *line,int *cursor, token_def *token_type)
     while (cat != CHAR_EOF);
 
     return 0;
-    
+
 }
