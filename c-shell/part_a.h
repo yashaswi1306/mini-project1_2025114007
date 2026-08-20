@@ -1,5 +1,5 @@
-#ifndef ML_H
-#define ML_H
+#ifndef CONNECT_H
+#define CONNECT_H
 
 #define TOKEN_LEN 300
 
@@ -39,5 +39,6 @@ typedef struct
 }token_def;
 
 int do_stuff(const char *line,int *cursor, token_def *token_type);
+int parse(const token_def *tokens);
 
 #endif 

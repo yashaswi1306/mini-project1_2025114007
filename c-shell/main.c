@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "ml.h"
+#include "part_a.h"
 
 #define const_buffer_size 1024
 #define const_token_size 64
@@ -158,13 +158,13 @@ void input_loop()
             continue;
         }
         
-        // if (!some_parser_func(array_strings))
-        // {
-        //     printf("cshell:invalid syntax\n");
-        //     free(input_line);
-        //     free(array_strings);
-        //     continue
-        // }
+        if (!parse(array_strings))
+        {
+            printf("cshell:invalid syntax\n");
+            free(input_line);
+            free(array_strings);
+            continue;
+        }
 
 
         free(input_line);
