@@ -1,42 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define TOKEN_LEN 300
 
-typedef enum {
-    STATE_GENERAL,
-    STATE_IN_WORD,
-    STATE_IN_SINGLE_IC,
-    STATE_IN_DOUBLE_IC,
-    STATE_AFTER_ESCAPE,
-    STATE_AFTER_GT,
-    STATE_IN_DOUBLE_IC_ESCAPE
-}state;
+#include <string.h>
 
-typedef enum{
-    CHAR_SPECIAL,
-    CHAR_QUOTE,
-    CHAR_ESCAPE,
-    CHAR_SPACE,
-    CHAR_ORDINARY,
-    CHAR_EOF
-}character_category;
-
-typedef enum{
-    OP_PIPE,
-    OP_AMP,
-    OP_SEMI,
-    OP_LT,
-    OP_GT,
-    OP_GTGT,
-    OP_WORD,
-    OP_EOF
-}token_category;
-
-typedef struct
-{
-    token_category type;
-    char value[TOKEN_LEN];
-}token_def;
+#include "ml.h"
 
 character_category translate(int c)
 {
@@ -145,26 +112,30 @@ int do_stuff(const char *line,int *cursor, token_def *token_type)
 
             if (c == '|')
             {
-                next_state=STATE_AFTER_GT;
-                //something something code :')
+                token_type->type=OP_PIPE;
+                token_type->value[0]='|';   
+                token_type->value[1]='\0';   
             }
 
             else if (c == '&')
             {
-                next_state=STATE_AFTER_GT;
-                //something something code :')
+                token_type->type=OP_AMP;
+                token_type->value[0]='&';   
+                token_type->value[1]='\0';   
             }
 
             else if (c == ';')
             {
-                next_state=STATE_AFTER_GT;
-                //something something code :')
+                token_type->type=OP_SEMI;
+                token_type->value[0]=';';   
+                token_type->value[1]='\0';   
             }
 
             else if (c == '<')
             {
-                next_state=STATE_AFTER_GT;
-                //something something code :')
+                token_type->type=OP_LT;
+                token_type->value[0]='<';   
+                token_type->value[1]='\0';   
             }
 
 
@@ -210,26 +181,32 @@ int do_stuff(const char *line,int *cursor, token_def *token_type)
 
             token_length=0;
             token[token_length]='\0'; // terminate that word
-            next_state=STATE_GENERAL;
-            // something something code :')
+            token_type->type=OP_WORD;
+            strcpy(token_type->value,token); // cuz poora word copy krna hoga naa
 
             return 1; // word mil gya wohhhhoo
 
 // secial char also ends word so seperate processing for that
         case 1000*STATE_IN_WORD+CHAR_SPECIAL:
 
-            token_length=0;
-            ungetc(c, stdin);
+            // so token belongs to NEXT CHAR thats why hello>>world toh >> is NEXT token
+
+            (*cursor)--; 
             // so token can be processed again in state general
-            next_state=STATE_GENERAL;
-            break;
+            token[token_length]='\0'; // terminate that word
+            token_type->type=OP_WORD;
+            strcpy(token_type->value,token); // cuz poora word copy krna hoga naa
+            return 1; // word mil gya wohhhhoo
 
 
         case 1000*STATE_IN_WORD+CHAR_EOF:
 
-            token_length=0;
-            next_state=STATE_GENERAL;
-            break;
+            token[token_length]='\0'; // terminate that word
+            token_type->type=OP_WORD;
+            strcpy(token_type->value,token); // cuz poora word copy krna hoga naa
+
+            return 1; // word mil gya wohhhhoo
+
 
 
         case 1000*STATE_AFTER_ESCAPE+CHAR_ORDINARY:
@@ -405,15 +382,21 @@ int do_stuff(const char *line,int *cursor, token_def *token_type)
 
             if (c == '>')
             {
-                //something something code 
-                next_state=STATE_GENERAL;
+                // cuz >> has more priority than > so it as to be >> not > > 
+                token_type->type=OP_GTGT;
+                token_type->value[0]='>';   
+                token_type->value[1]='>';   
+                token_type->value[2]='\0';   
+                return 1;
             }
             else
             {
-            
-                ungetc(c, stdin);
-                // so token can be rocessed again in state general
-                next_state=STATE_GENERAL;
+                (*cursor)--; 
+                // so token can be processed again in state general
+                token_type->type=OP_GT;
+                token_type->value[0]='>';   
+                token_type->value[1]='\0';   
+                return 1;
             }
 
             break;
@@ -424,16 +407,25 @@ int do_stuff(const char *line,int *cursor, token_def *token_type)
         case 1000*STATE_AFTER_GT+CHAR_ESCAPE:
 
 
-            ungetc(c, stdin);
-            // so token can be rocessed again in state general
-            next_state=STATE_GENERAL;
-            break;
+            (*cursor)--; 
+            // so token can be processed again in state general
+            
+            token_type->type=OP_GT;
+            token_type->value[0]='>';   
+            token_type->value[1]='\0';   
+
+            return 1;
+            // next_state=STATE_GENERAL;
+            // break;
 
 
         case 1000*STATE_AFTER_GT+CHAR_EOF:
 
-        next_state=STATE_GENERAL;
-            break;
+            token_type->type=OP_GT;
+            token_type->value[0]='>';   
+            token_type->value[1]='\0';   
+            
+            return 1;
 
         default:
 
@@ -447,4 +439,7 @@ int do_stuff(const char *line,int *cursor, token_def *token_type)
 
     }
     while (cat != CHAR_EOF);
+
+    return 0;
+    
 }
