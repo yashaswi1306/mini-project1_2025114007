@@ -1,9 +1,41 @@
+#define _POSIX_C_SOURCE 200809L 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "part_a.h"
 
+#include <unistd.h>
+#include <limits.h>
+#include <string.h> 
+
 #define const_buffer_size 1024
 #define const_token_size 64
+
+void dir_name(char* home_dir) //ai generated part (present in my prompts doc)
+{
+    char cwd[PATH_MAX];
+    char hostname[HOST_NAME_MAX+1];
+
+    gethostname(hostname, sizeof(hostname));
+
+    char*user=getenv("USER");
+    getcwd(cwd, sizeof(cwd));
+
+    if (strcmp(cwd,home_dir)==0)
+    {
+        printf("<user:%s@%s,dir:~>", user, hostname);
+    }
+    else if (strncmp(cwd,home_dir, strlen(home_dir))==0) //starts with home dir so thats why jst use str n cmp to compare n vals
+    {
+        printf("<user:%s@%s,dir:~%s> ", user, hostname, cwd+strlen(home_dir));
+    }
+    else
+    {
+        printf("<user:%s@%s,dir:~%s> ", user, hostname, cwd);
+    }
+
+    fflush(stdout);
+}
 
 char* read_line()
 {
@@ -132,7 +164,7 @@ token_def* split_line(char* in_line)
     return tokens_list;    
 }
 
-void input_loop()
+void input_loop(char* home_dir)
 {
     // int status;
     char* input_line;
@@ -147,7 +179,7 @@ void input_loop()
     // while(status) for user ne likha kya haiiiii!!! ek baar check project requirements 
     while(1)
     {
-        printf(">");
+        dir_name(home_dir);
         input_line=read_line();
         array_strings=split_line(input_line);
 
@@ -174,6 +206,9 @@ void input_loop()
 
 int main()
 {
-    input_loop();
+    char home_dir[PATH_MAX];
+    getcwd(home_dir, sizeof(home_dir));
+
+    input_loop(home_dir);
     return 0;
 }
