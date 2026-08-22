@@ -1,12 +1,13 @@
-#define _POSIX_C_SOURCE 200809L 
+// #define _POSIX_C_SOURCE 200809L 
 
-#include <stdio.h>
-#include <stdlib.h>
+// #include <stdio.h>
+// #include <stdlib.h>
 #include "part_a.h"
 
-#include <unistd.h>
-#include <limits.h>
-#include <string.h> 
+// #include <unistd.h>
+// #include <limits.h>
+// #include <string.h> 
+#include "part_b.h"
 
 #define const_buffer_size 1024
 #define const_token_size 64
@@ -198,6 +199,44 @@ void input_loop(char* home_dir)
             continue;
         }
 
+       if (array_strings[0].type==OP_WORD&&strcmp(array_strings[0].value,"hop")==0)
+    {
+    int argc = 0;
+    char **argv = NULL;
+
+    for (int i=1; array_strings[i].type!=OP_EOF; i++)
+    {
+        if (array_strings[i].type == OP_WORD)
+            argc++;
+    }
+
+    if (argc>0)
+    {
+        argv=malloc(sizeof(char*)*argc);
+
+        if (argv==NULL)
+        {
+            free(input_line);
+            free(array_strings);
+            continue;
+        }
+
+        int j=0;
+
+        for (int i=1;array_strings[i].type!=OP_EOF;i++)
+        {
+            if (array_strings[i].type==OP_WORD)
+            {
+                argv[j]=array_strings[i].value;
+                j++;
+            }
+        }
+    }
+
+    hop(argc, argv, getenv("HOME"));
+
+    free(argv);
+}
 
         free(input_line);
         free(array_strings);

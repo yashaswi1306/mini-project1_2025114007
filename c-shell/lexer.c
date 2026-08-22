@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
+// #include <stdio.h>
+// #include <stdlib.h>
 
-#include <string.h>
+// #include <string.h>
 #include "part_a.h"
 
 character_category translate(int c)
