@@ -1,327 +1,305 @@
-#include "part_b.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <limits.h>
+#include <time.h>
+#include "hop.h"
 
-hop_command *head=NULL;
-hop_command *tail=NULL;
+#define MAX_ENTRIES 256
+#define PATH_MAX 5000
 
-char prev_cwd[PATH_SIZE]=""; //prev dir
+//so struct shld hav the name of dir, time of hop and number of hops, name of directpory and the numer of hops right
+typedef struct {
+    char path[PATH_MAX]; //path of directory
+    int  frequency; //number of hits        
+    long last_access; //time of hop
+}frecency_entry_t;
 
+char history_path[PATH_MAX];
+char hop_shell_home[PATH_MAX];
 
-void get_hist(char *filename)
-{
-    char*home=getenv("HOME");
-    if(home==NULL){
-        strcpy(filename,"\0");
+frecency_entry_t db[MAX_ENTRIES];
+int db_count = 0;
+
+void save_history() {
+    FILE *fp = fopen(history_path, "w");
+    if (fp == NULL) 
+    {
+        return;               
     }
-    else{
-        snprintf(filename,PATH_SIZE,"%s/.hop_prev",home);
+    for (int i = 0; i < db_count; i++)
+    {
+        fprintf(fp, "%d %ld %s\n",db[i].frequency, db[i].last_access, db[i].path);
     }
+    fclose(fp);
 }
 
-//new node
-void insert_node(char *path,int visit)
-{
-    hop_command *newnode=malloc(sizeof(hop_command));
-    if(newnode==NULL)
-    {
+void load_history() {
+    FILE *fp = fopen(history_path, "r");
+    if (fp == NULL) {
         return;
     }
-
-    strncpy(newnode->path,path,PATH_SIZE-1);
-    newnode->hits=visit;
-    newnode->next=NULL;
-    newnode->path[PATH_SIZE-1]=0;
-    
-    if(tail==NULL)
+    db_count = 0;
+    char line[PATH_MAX + 128];
+    while (db_count < MAX_ENTRIES && fgets(line, sizeof(line), fp) != NULL) 
     {
-        head=tail=newnode;
-    }
-    else
-    {
-        tail->next=newnode;
-        tail=newnode;
-    }
-    return;
-}
-
-//del list
-void clear_list()
-{
-    hop_command *cur = head;
-    while(cur != NULL)
-    {
-        hop_command *next = cur->next;
-        free(cur);
-        cur = next;
-    }
-    head = NULL;
-    tail = NULL;
-}
-
-
-// to load the dir history
-void load_cache()
-{
-    // int count=0;
-
-    char filename[PATH_SIZE];
-    get_hist(filename);
-
-    if(strcmp(filename,"\0")==0){
-        return;
-    }
-
-    FILE *f=fopen(filename,"r");
-
-    if(f==NULL){
-        return;
-    }
-    clear_list(); 
-    
-    int visit;
-    char path[PATH_SIZE];
-
-    while(fscanf(f,"%d %[^\n]",&visit,path)==2)
-    {
-        insert_node(path,visit);
-    }
-    fclose(f);
-}
-
-
-
-hop_command *find_match_path(char* path)
-{
-    hop_command *temp=head;
-    while(temp!=NULL)
-    {
-        if(strcmp(temp->path,path)==0)
+        int freq;
+        long last_acc;
+        if (sscanf(line, "%d %ld", &freq, &last_acc) == 2) // if valid line, so has the correct len
         {
-            return temp;
+            char *p = line;
+
+            while (*p && (*p == ' ' || *p == '\t')) p++; //ignotr the starting tabs
+            while (*p && (*p >= '0' && *p <= '9')) p++; //ignotre the freq numbers
+            while (*p && (*p == ' ' || *p == '\t')) p++; //ignore the beeck ke spaces
+            while (*p && ((*p >= '0' && *p <= '9') || *p == '-')) p++; //ignore the lastaccess numbers
+            while (*p && (*p == ' ' || *p == '\t')) p++; //ignore the spavces before the actual address
+
+            int len_p = strlen(p);
+            while (len_p > 0 && (p[len_p - 1] == '\n' || p[len_p - 1] == '\r')) {
+                p[len_p - 1] = '\0'; 
+                len_p--;
+            }
+
+            if (len_p > 0) {
+                db[db_count].frequency = freq;
+                db[db_count].last_access = last_acc;
+                strncpy(db[db_count].path, p, PATH_MAX - 1);
+                db[db_count].path[PATH_MAX - 1] = '\0';
+                db_count++;
+            }
         }
-        temp=temp->next;
+    }
+    fclose(fp);
+}
+
+//scoring ,ethid. Based on frequency, if no frequency, then last access
+int compare_entries(const frecency_entry_t *a, const frecency_entry_t *b) 
+{
+    if (b->frequency != a->frequency) 
+    {
+        return b->frequency - a->frequency;
+    }
+    if (b->last_access > a->last_access) 
+    {
+        return 1;
+    }
+    if (b->last_access < a->last_access) 
+    {
+        return -1;
+    }
+    return 0;
+}
+
+void update_frecency(const char *abs_path) {
+
+    //does this entry already exist
+    for (int i = 0; i < db_count; i++) 
+    {
+        if (strcmp(db[i].path, abs_path) == 0) 
+        {
+            db[i].frequency++; //if found, just update the frequency and last access time
+            db[i].last_access = (long)time(NULL);
+            save_history(); //save the new array
+            return;
+        }
+    }
+
+    if (db_count < MAX_ENTRIES) //still more space in teh db, then jst add it with freq =1
+    {
+        strncpy(db[db_count].path, abs_path, PATH_MAX - 1);
+        db[db_count].path[PATH_MAX - 1] = '\0';
+        db[db_count].frequency = 1;
+        db[db_count].last_access = (long)time(NULL);
+        db_count++;
+    } 
+    else 
+    {
+        //noi space then evict the least accessed entry
+        int min_idx = 0;
+        for (int i = 1; i < db_count; i++) 
+        {
+            if (compare_entries(&db[i], &db[min_idx]) > 0) {
+                //db[min_idx] is higher rank than db[i], so db[i] is lower in ranking
+                min_idx = i;
+            }
+        }
+        strncpy(db[min_idx].path, abs_path, PATH_MAX - 1);
+        db[min_idx].path[PATH_MAX - 1] = '\0';
+        db[min_idx].frequency = 1;
+        db[min_idx].last_access = (long)time(NULL);
+    }
+    save_history(); //save to file
+}
+
+const char *frecency_lookup(const char *name) 
+{
+
+    int order[MAX_ENTRIES];
+    for (int i = 0; i < db_count; i++) order[i] = i;
+
+   //sort teh db array to rank the higher rank one on top
+    for (int i = 0; i < db_count - 1; i++) {
+        for (int j = i + 1; j < db_count; j++) {
+            if (compare_entries(&db[order[i]], &db[order[j]]) > 0) 
+            {
+                int k= order[i];
+                order[i] = order[j];
+                order[j] = k;
+            }
+        }
+    }
+
+    for (int i = 0; i < db_count; i++) 
+    {
+        int idx = order[i];
+        if (strstr(db[idx].path, name) != NULL) {
+            struct stat st;
+            if (stat(db[idx].path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                return db[idx].path;
+            }
+        }
     }
     return NULL;
 }
 
-//move recent to fron of linked list (basic cpro stuff hai)
-void move_to_front(hop_command*temp)
+//code to hop to target . THen it make s the OLDPWD into ur CWD 
+
+int do_chdir(const char *target) 
 {
-    temp->hits++;
-    if(temp==head)
-    {
-        return;
-    }
-    hop_command* prev=NULL;
-    hop_command* curr=head;
+    char prev[PATH_MAX]; 
     
-    while(curr!=NULL && curr!=temp)
+    if (getcwd(prev, sizeof(prev)) == NULL) 
     {
-        prev=curr;
-        curr=curr->next;
+        prev[0] = '\0'; //st0re the directory before hoppung
     }
 
-    if(prev!=NULL)
+    if (chdir(target) != 0)  //cldnt hop to proper dir
     {
-        prev->next=curr->next;
+        return 0;
     }
 
-    if(curr==tail)
+    char landed[PATH_MAX];
+    if (getcwd(landed, sizeof(landed)) != NULL) 
     {
-        tail=prev;
+        update_frecency(landed);
     }
-    
-    curr->next=head;
-    head=curr;
-    
-    return;
+
+    if (prev[0] != '\0') 
+    {
+        setenv("OLDPWD", prev, 1); //save OLD PWD FOR hop ..
+    }
+    return 1;
 }
-//del_node **************SEG FAULT HUA TOH CHECK HERE FIRST!!!!!
-void del_node(hop_command *temp)
-{
-    hop_command* prev=NULL;
-    hop_command* curr=head;
 
-    while(curr)
+
+void hop_init(const char *home_dir) 
+{
+    strncpy(hop_shell_home, home_dir, PATH_MAX - 1); //path of shells home dir
+    hop_shell_home[PATH_MAX - 1] = '\0'; //save that path in the global variable plus null terminator
+
+    char exe_path[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1); //find path of currentloy running executable
+    if (len > 0)  //if readlink worked
     {
-        if(curr==temp)
+        exe_path[len] = '\0';
+        
+        char *last_slash = strrchr(exe_path, '/');
+        if (last_slash != NULL)
         {
-            if(prev!=NULL)
-            {
-                prev->next=curr->next;
-            }
-            else
-            {
-                head=curr->next;
-            }
-            if(curr==tail)
-            {
-                tail=prev;
-            }
-            free(curr);
-            return;
+            *last_slash = '\0';
+            strncpy(history_path, exe_path, PATH_MAX - 15); //cpies executable into history path
+            history_path[PATH_MAX - 15] = '\0';
+            strcat(history_path, "/.hop_history");  
+        } 
+        else 
+        {
+            snprintf(history_path, sizeof(history_path), "%s/.hop_history", home_dir); //print path with hop history
         }
-        prev=curr;
-        curr=curr->next;
+    } else 
+    {
+        snprintf(history_path, sizeof(history_path), "%s/.hop_history", home_dir); //load old  hist cuz readlink didnt work
     }
+
+    load_history();
 }
 
-
-
-// save to dir hist
-void save_cache()
-{
-    char filename[PATH_SIZE];
-    get_hist(filename);
-
-    if(strcmp(filename,"\0")==0)
+void hop(const token_list_t *list) {
+    //if no arguments, treat it like hop ~
+    if (list->count <= 1) 
     {
+        do_chdir(hop_shell_home);
         return;
     }
 
-    FILE *f=fopen(filename,"w");
-    
-    if(f==NULL)
+    //process itt in sequential order
+    for (int i = 1; i < list->count; i++) 
     {
-        return;
-    }
-
-    hop_command *new=head;
-    while(new!=NULL)
-    {
-        fprintf(f,"%d %s\n",new->hits,new->path);
-        new=new->next;
-    }
-    fclose(f);
-}
-
-// record hop (frequency order)
-void update_cache(char *path)
-{
-    hop_command *flag=find_match_path(path);
-    if(flag)
-    {
-        move_to_front(flag);
-    }
-    else
-    {
-        hop_command *temp=malloc(sizeof(hop_command));
-        if(temp==NULL)
+        // make sure to skip non words
+        if (list->tokens[i].type != OP_WORD) 
         {
-            return;
+            continue;
         }
-        strncpy(temp->path,path,PATH_SIZE-1);
-        temp->hits=1;
-        temp->next=head;
-        temp->path[PATH_SIZE-1]='\0';
-        head=temp;
-        if(tail==NULL)
+
+        const char *arg = list->tokens[i].text;
+
+        // if ~ then go home
+        if (strcmp(arg, "~") == 0) 
         {
-            tail=temp;
+            do_chdir(hop_shell_home);
+            continue;
         }
-    }
-}
 
-//get most nuner of hits for having substrng key in path
-hop_command* find_match_at_index(const char* key)
-{
-    hop_command *match = NULL;
-    hop_command *temp = head;
-
-    while(temp != NULL)
-    {
-        if(strstr(temp->path, key) != NULL)
+        // if . then stay in directory
+        if (strcmp(arg, ".") == 0) 
         {
-            if(match == NULL || temp->hits > match->hits)
-            {
-                match = temp;
-            }
+            continue;
         }
 
-        temp = temp->next;
-    }
-
-    return match;
-}
-///ai generated and modified waale parts:
-
-static int path_is_dir(const char *path)
-{
-    struct stat st;
-    return stat(path,&st)==0 && S_ISDIR(st.st_mode);
-}
-
-int hop_one(const char *arg, const char *home_dir)
-{
-    char before[PATH_SIZE];
-    if(getcwd(before,sizeof(before))==NULL) before[0]='\0';
-
-    const char *target=NULL;
-
-    if(strcmp(arg,"~")==0){
-        target=home_dir;
-    }
-    else if(strcmp(arg,".")==0){
-        return 0; /* explicit no-op */
-    }
-    else if(strcmp(arg,"..")==0){
-        if(strcmp(before,"/")==0) return 0; /* CWD has no parent */
-        target="..";
-    }
-    else if(strcmp(arg,"-")==0){
-        if(prev_cwd[0]=='\0') return 0; /* no previous CWD yet */
-        target=prev_cwd;
-    }
-    else {
-        /* requirement 5: direct relative/absolute resolution first */
-        if(path_is_dir(arg)){
-            target=arg;
+        // .. then go to parent dir
+        if (strcmp(arg, "..") == 0) 
+        {
+            do_chdir("..");
+            continue;
         }
-        else {
-            /* requirement 6+4: frecency fallback, pruning stale hits */
-            hop_command *match;
-            while((match=find_match_at_index(arg))!=NULL){
-                if(path_is_dir(match->path)){
-                    target=match->path;
-                    break;
+
+        // previous cwd print in termibal
+        if (strcmp(arg, "-") == 0) 
+        {
+            char *old = getenv("OLDPWD");
+            if (old != NULL) {
+                printf("%s\n", old);
+                if (!do_chdir(old)) {
+                    printf("hop: No such directory\n");
                 }
-                del_node(match);
-                save_cache();
             }
-
-            if(target==NULL){
-                printf("hop: no such directory\n");
-                return 1;
-            }
+            continue;
         }
-    }
 
-    if(chdir(target)!=0){
-        printf("hop: no such directory\n");
-        return 1;
-    }
-
-    strncpy(prev_cwd, before, PATH_SIZE-1);
-    prev_cwd[PATH_SIZE-1]='\0';
-
-    char after[PATH_SIZE];
-    if(getcwd(after,sizeof(after))!=NULL)
+        // absolute path try
         {
-            update_cache(after);
-            save_cache();
+            struct stat st;
+            if (stat(arg, &st) == 0 && S_ISDIR(st.st_mode)) {
+                if (!do_chdir(arg)) {
+                    printf("hop: No such directory\n");
+                }
+                continue;
+            }
         }
-    return 0;
-}
-int hop(int argc, char **argv, const char *home_dir)
-{
-    load_cache();
-    if(argc==0)
-        return hop_one("~", home_dir);
 
-    int status=0;
-    for(int i=0; i<argc; i++){
-        if(hop_one(argv[i], home_dir)!=0)
-            status=1;
+        // frecency lookup
+        {
+            const char *match = frecency_lookup(arg);
+            if (match != NULL) {
+                if (!do_chdir(match)) {
+                    printf("hop: No such directory\n");
+                }
+                continue;
+            }
+        }
+        // nothing matched
+        printf("hop: No such directory\n");
     }
-
-    return status;
 }
