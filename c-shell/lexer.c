@@ -1,445 +1,309 @@
-// #include <stdio.h>
-// #include <stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "lexer.h"
 
-// #include <string.h>
-#include "part_a.h"
+#define WORD_SIZE 32
+#define TOK_SIZE 8
 
-character_category translate(int c)
+int is_special(char c) 
 {
-    switch(c)
+    return c=='<'||c=='>'||c == ';'||c=='|'||c =='&'; //not in word special char
+}
+
+int is_space_char(char c) 
+{
+    return c==' '||c=='\t'||c=='\n';
+}
+
+//ai used to change the array code to vector (better for dynamic mem alloc)
+typedef struct {
+    token_t *items; //pointer to array
+    int count; //no of items stored
+    int cap; //capacity total
+}token_vec_t;
+
+//initialise the vec
+void tv_init(token_vec_t *v) 
+{
+    v->cap = TOK_SIZE;
+    v->count = 0;
+    v->items = malloc(sizeof(token_t) * v->cap); //allocated memory to vec
+    if (v->items == NULL) 
     {
-        case '|': case '&': case '>': case '<': case ';': return CHAR_SPECIAL;
-
-        case '"': case '\'': return CHAR_QUOTE;
-
-        case '\\': return CHAR_ESCAPE;
-
-        case ' ': case '\t': case '\n': case '\r': return CHAR_SPACE;
-
-        case EOF: return CHAR_EOF;
-
-        default: return CHAR_ORDINARY;
+        fprintf(stderr, "cshell: out of memory\n"); //mem not allocated properly
+        exit(1);
     }
 }
 
-int do_stuff(const char *line,int *cursor, token_def *token_type)
-{
-    character_category cat; //currebnt category
-
-    state current_state=STATE_GENERAL;
-    state next_state= STATE_GENERAL;
-
-    int token_length=0;
-    char token[TOKEN_LEN];
-
-    do
+void tv_push(token_vec_t *v, token_category type, char *text) {
+    if (v->count == v->cap) 
     {
-        int c= line[*cursor];
-        (*cursor)++;
-
-        if (c=='\0')
+        v->cap *= 2; //if array full, double capacity
+        token_t *grown = realloc(v->items, sizeof(token_t) * v->cap); //reallocate upon full memory
+        if (grown == NULL) //not reallocated properly
         {
-            c=EOF;
+            fprintf(stderr, "cshell: out of memory\n");
+            exit(1);
         }
-        else
-        {
-            c=(unsigned char)c; //read c from input line cuz ur not reading from stdin 
-        }
-
-        cat=translate(c); //char category
-
-        int selector=1000*current_state+cat; // for the switc case laetr on (1000* so no collision (HASHIIINGGGG!!! yayyy trauma :( )))
-        next_state=current_state;
-
-
-        switch (selector)
-        {
-            // if start from general+word then stay in word
-        case 1000*STATE_GENERAL+CHAR_ORDINARY:
-
-            token_length=0; // since u have to start a new word
-            // token_length++;
-            if (token_length<TOKEN_LEN-1)
-            {
-                token[token_length++]=c;
-            }
-            else
-            {
-                printf("cshell:invalid syntax\n");
-                return 2; // 2 for invalid in main
-            }
-            next_state=STATE_IN_WORD;
-            break;
-
-
-        case 1000*STATE_GENERAL+CHAR_SPACE:
-
-            next_state=STATE_GENERAL; //ignore for extra whitespace
-            break;
-
-
-        case 1000*STATE_GENERAL+CHAR_ESCAPE:
-
-            token_length=0;
-            next_state=STATE_AFTER_ESCAPE; //to keep flag for state after escape
-            break;
-
-
-        case 1000*STATE_GENERAL+CHAR_QUOTE:
-
-            if (c == '"')
-            {
-                token_length=0;
-                next_state=STATE_IN_DOUBLE_IC;
-            }
-            else
-            {
-                token_length=0;
-                next_state=STATE_IN_SINGLE_IC;
-            }
-
-            break;
-
-
-        case 1000*STATE_GENERAL+CHAR_SPECIAL:
-
-            if (c == '>')
-            {
-                next_state=STATE_AFTER_GT;
-                break; // cuz is it >> or > (so u need that state to check )
-            }
-
-            if (c == '|')
-            {
-                token_type->type=OP_PIPE;
-                token_type->value[0]='|';   
-                token_type->value[1]='\0';   
-            }
-
-            else if (c == '&')
-            {
-                token_type->type=OP_AMP;
-                token_type->value[0]='&';   
-                token_type->value[1]='\0';   
-            }
-
-            else if (c == ';')
-            {
-                token_type->type=OP_SEMI;
-                token_type->value[0]=';';   
-                token_type->value[1]='\0';   
-            }
-
-            else if (c == '<')
-            {
-                token_type->type=OP_LT;
-                token_type->value[0]='<';   
-                token_type->value[1]='\0';   
-            }
-
-
-            return 1; //special token mil gya wohoooooo 
-
-
-        case 1000*STATE_GENERAL+ CHAR_EOF:
-
-            next_state=STATE_GENERAL;
-            return 0; //ho gya input line finish
-
-        case 1000*STATE_IN_WORD+CHAR_ORDINARY:
-
-            if (token_length < TOKEN_LEN-1)
-                token[token_length++]=c;
-            else
-            {
-                printf("cshell: invalid syntax\n");
-                return 2;
-            }
-
-            next_state=STATE_IN_WORD;
-            break;
-
-
-        case 1000*STATE_IN_WORD+CHAR_ESCAPE:
-
-            next_state=STATE_AFTER_ESCAPE;
-            break;
-
-
-        case 1000*STATE_IN_WORD+CHAR_QUOTE:
-
-            if (c == '"')
-                next_state=STATE_IN_DOUBLE_IC;
-            else
-                next_state=STATE_IN_SINGLE_IC;
-
-            break;
-
-
-        case 1000*STATE_IN_WORD+CHAR_SPACE:
-
-            token_length=0;
-            token[token_length]='\0'; // terminate that word
-            token_type->type=OP_WORD;
-            strcpy(token_type->value,token); // cuz poora word copy krna hoga naa
-
-            return 1; // word mil gya wohhhhoo
-
-// secial char also ends word so seperate processing for that
-        case 1000*STATE_IN_WORD+CHAR_SPECIAL:
-
-            // so token belongs to NEXT CHAR thats why hello>>world toh >> is NEXT token
-
-            (*cursor)--; 
-            // so token can be processed again in state general
-            token[token_length]='\0'; // terminate that word
-            token_type->type=OP_WORD;
-            strcpy(token_type->value,token); // cuz poora word copy krna hoga naa
-            return 1; // word mil gya wohhhhoo
-
-
-        case 1000*STATE_IN_WORD+CHAR_EOF:
-
-            token[token_length]='\0'; // terminate that word
-            token_type->type=OP_WORD;
-            strcpy(token_type->value,token); // cuz poora word copy krna hoga naa
-
-            return 1; // word mil gya wohhhhoo
-
-
-
-        case 1000*STATE_AFTER_ESCAPE+CHAR_ORDINARY:
-        case 1000*STATE_AFTER_ESCAPE+CHAR_SPACE:
-        case 1000*STATE_AFTER_ESCAPE+CHAR_SPECIAL:
-        case 1000*STATE_AFTER_ESCAPE+CHAR_QUOTE:
-        case 1000*STATE_AFTER_ESCAPE+CHAR_ESCAPE:
-
-            if (token_length < TOKEN_LEN-1)
-                token[token_length++]=c;
-            else
-            {
-                printf("cshell: invalid syntax\n");
-                return 2;
-            }
-            next_state=STATE_IN_WORD;
-            break;
-
-//trailing escape
-        case 1000*STATE_AFTER_ESCAPE+CHAR_EOF:
-
-            printf("cshell:invalid syntax\n");
-            next_state=STATE_GENERAL;
-            return 2;
-            // break;
-
-
-        case 1000*STATE_IN_SINGLE_IC+CHAR_QUOTE:
-
-            if (c == '\'')
-            {
-                next_state=STATE_IN_WORD;
-            }
-            else
-            {
-                if (token_length < TOKEN_LEN-1)
-                    token[token_length++]=c;
-                else
-                {
-                    printf("cshell: invalid syntax\n");
-                    return 2;
-                }
-
-                next_state=STATE_IN_SINGLE_IC;
-            }
-            break;
-
-//sq body
-        case 1000*STATE_IN_SINGLE_IC+CHAR_ORDINARY:
-        case 1000*STATE_IN_SINGLE_IC+CHAR_SPACE:
-        case 1000*STATE_IN_SINGLE_IC+CHAR_SPECIAL:
-        case 1000*STATE_IN_SINGLE_IC+CHAR_ESCAPE:
-
-            if (token_length < TOKEN_LEN-1)
-                token[token_length++]=c;
-            else
-            {
-                printf("cshell: invalid syntax\n");
-                return 2;
-            }
-
-            next_state=STATE_IN_SINGLE_IC;
-
-            break;
-
-
-        case 1000*STATE_IN_SINGLE_IC+CHAR_EOF:
-        
-            printf("cshell:invalid syntax\n");
-            return 2;
-            // next_state=STATE_GENERAL;
-            // break;
-       
-        case 1000*STATE_IN_DOUBLE_IC+CHAR_QUOTE:
-
-            if (c == '"')
-            {
-                next_state=STATE_IN_WORD;
-                
-            }
-            else
-            {
-             
-                if (token_length < TOKEN_LEN-1)
-                    token[token_length++]=c;
-                else
-                {
-                    printf("cshell: invalid syntax\n");
-                    return 2;
-                }
-
-                next_state=STATE_IN_DOUBLE_IC;
-            }
-
-            break;
-
-
-     
-        case 1000*STATE_IN_DOUBLE_IC+CHAR_ESCAPE:
-            next_state=STATE_IN_DOUBLE_IC_ESCAPE;
-            break;
-
-        case 1000*STATE_IN_DOUBLE_IC+CHAR_ORDINARY:
-        case 1000*STATE_IN_DOUBLE_IC+CHAR_SPACE:
-        case 1000*STATE_IN_DOUBLE_IC+CHAR_SPECIAL:
-
-            if (token_length < TOKEN_LEN-1)
-            {
-                token[token_length++]=c;
-            }
-            else
-            {
-                printf("cshell: invalid syntax\n");
-                return 2;
-            }
-
-            next_state=STATE_IN_DOUBLE_IC;
-            break;
-
-
-   
-        case 1000*STATE_IN_DOUBLE_IC+CHAR_EOF:
-
-            printf("cshell:invalid syntax\n");
-            return 2;
-            // next_state=STATE_GENERAL;
-            // break;
-
-
-        case 1000*STATE_IN_DOUBLE_IC_ESCAPE+CHAR_ORDINARY:
-        case 1000*STATE_IN_DOUBLE_IC_ESCAPE+CHAR_SPACE:
-        case 1000*STATE_IN_DOUBLE_IC_ESCAPE+CHAR_SPECIAL:
-        case 1000*STATE_IN_DOUBLE_IC_ESCAPE+CHAR_QUOTE:
-        case 1000*STATE_IN_DOUBLE_IC_ESCAPE+CHAR_ESCAPE:
-
-            if (c=='"'|| c=='\\')
-            {
-                if (token_length < TOKEN_LEN-1)
-                {
-                    token[token_length++]=c;
-                }
-                else
-                {
-                    printf("cshell: invalid syntax\n");
-                    return 2;
-                }
-            }
-            else
-            {
-                if (token_length < TOKEN_LEN-2)
-                {
-                    token[token_length++]='\\';
-                    token[token_length++]=c;
-                }
-                else
-                {
-                    printf("cshell: invalid syntax\n");
-                    return 2;
-                }
-            }
-
-            next_state=STATE_IN_DOUBLE_IC;
-            break;
-
-        case 1000*STATE_IN_DOUBLE_IC_ESCAPE+CHAR_EOF:
-
-            printf("cshell:invalid syntax\n");
-            return 2;
-            // next_state=STATE_GENERAL;
-            // break
-
-
-        case 1000*STATE_AFTER_GT+CHAR_SPECIAL:
-
-            if (c == '>')
-            {
-                // cuz >> has more priority than > so it as to be >> not > > 
-                token_type->type=OP_GTGT;
-                token_type->value[0]='>';   
-                token_type->value[1]='>';   
-                token_type->value[2]='\0';   
-                return 1;
-            }
-            else
-            {
-                (*cursor)--; 
-                // so token can be processed again in state general
-                token_type->type=OP_GT;
-                token_type->value[0]='>';   
-                token_type->value[1]='\0';   
-                return 1;
-            }
-
-            break;
-   
-        case 1000*STATE_AFTER_GT+CHAR_ORDINARY:
-        case 1000*STATE_AFTER_GT+CHAR_SPACE:
-        case 1000*STATE_AFTER_GT+CHAR_QUOTE:
-        case 1000*STATE_AFTER_GT+CHAR_ESCAPE:
-
-
-            (*cursor)--; 
-            // so token can be processed again in state general
-            
-            token_type->type=OP_GT;
-            token_type->value[0]='>';   
-            token_type->value[1]='\0';   
-
-            return 1;
-            // next_state=STATE_GENERAL;
-            // break;
-
-
-        case 1000*STATE_AFTER_GT+CHAR_EOF:
-
-            token_type->type=OP_GT;
-            token_type->value[0]='>';   
-            token_type->value[1]='\0';   
-            
-            return 1;
-
-        default:
-
-            printf("cshell:invalid syntax\n");
-            return 2;
-            // next_state=STATE_GENERAL;
-            // break;
-        }
-
-        current_state=next_state;
-
+        v->items = grown; //vec points to the new reallocated tokens
     }
-    while (cat != CHAR_EOF);
 
-    return 0;
+    //store new value after old array ended , so after its len (count)
+    v->items[v->count].type = type; 
+    v->items[v->count].text = text;
+    v->count++;
+}
 
+void tv_free_contents(token_vec_t *v) 
+{
+    for (int i = 0; i < v->count; i++) 
+    {
+        free(v->items[i].text); //free individual tokens
+    }
+    free(v->items); //free artay
+}
+
+//use growable char buffer instead of array to bild word (again my code modified by ai to change it from arr)
+typedef struct {
+    char *data; //pointer to array
+    int len; //len of char array
+    int cap; //capacity of char array
+} word_t;
+
+//same as token mem allication function
+void word_init(word_t *b) 
+{
+    b->cap = WORD_SIZE; 
+    b->len = 0;
+    b->data = malloc(b->cap);
+    if (b->data == NULL) 
+    {
+        fprintf(stderr, "cshell: out of memory\n");
+        exit(1);
+    }
+    b->data[0] = '\0'; // null terminator for end of word
+}
+
+void word_push(word_t *b, char c) {
+    if (b->len + 2 > b->cap) //+2 cux null terminator bhi hai naa (so new char + \0)
+    { 
+        b->cap *= 2;
+        char *grown = realloc(b->data, b->cap);
+        if (grown == NULL) {
+            fprintf(stderr, "cshell: out of memory\n");
+            exit(1);
+        }
+        b->data = grown;
+    }
+    b->data[b->len++] = c; //added char
+    b->data[b->len] = '\0'; //null terminator
+}
+
+
+static char *lex_word(const char *line, int len, int *pos, int *error) 
+{
+    //tokenizationnnnnn 
+    word_t word;
+    word_init(&word); //mem alloc for word
+
+    while (*pos<len) 
+    {
+        char c = line[*pos]; //read char at position
+        if (is_space_char(c)||is_special(c)) 
+        {
+            break; //means that word has ended.
+        }
+
+        if (c=='\\') 
+        {
+            if (*pos+1>=len) 
+            {
+                //if lst char is escape, lex error
+                *error=1;
+                free(word.data);
+                return NULL;
+            }
+            // otherwise ignore the /.
+            word_push(&word, line[*pos + 1]);
+            *pos += 2;
+            continue;
+        }
+
+        if (c == '"') 
+        { 
+            //open double quotes
+            (*pos)++;
+            int closed = 0;
+            while (*pos<len) {
+                char dc=line[*pos];
+                if (dc == '"') {
+                    closed = 1; //find closing quotes
+                    (*pos)++;
+                    break;
+                }
+                if (dc == '\\') 
+                {
+                    if (*pos + 1 >= len) 
+                    { // again if ended with /
+                        *error = 1;
+                        free(word.data);
+                        return NULL;
+                    }
+                    // inside "", \" and \\ are special d_body
+                    char nc = line[*pos + 1];
+
+                    if (nc == '"' || nc == '\\') 
+                    {
+                        word_push(&word, nc); //push taht special char
+                    } 
+                    else 
+                    {
+                        word_push(&word, '\\'); // keep the / for chars like /n, /t etc.
+                        word_push(&word, nc);
+                    }
+                    *pos += 2;
+                    continue;
+                }
+                word_push(&word, dc);
+                (*pos)++;
+            }
+            if (!closed) 
+            { //not closed
+                *error = 1;
+                free(word.data);
+                return NULL;
+            }
+            continue;
+        }
+
+        if (c == '\'') 
+        { //same logic as ""
+            (*pos)++;
+            int closed = 0;
+            while (*pos < len) {
+                char sc = line[*pos];
+                if (sc == '\'') 
+                {
+                    closed = 1;
+                    (*pos)++;
+                    break;
+                }
+                word_push(&word, sc);
+                (*pos)++;
+            }
+            if (!closed) \
+            {
+                *error = 1;
+                free(word.data);
+                return NULL;
+            }
+            continue;
+        }
+
+        /* ordinary character */
+        word_push(&word, c);
+        (*pos)++;
+    }
+
+    *error = 0; // if not break beofre, then no error
+    return word.data;
+}
+
+token_list_t *lex_line(const char *line, int *error) //lexer for one inpput line
+{
+    token_vec_t vec; 
+    tv_init(&vec);
+
+    int len = strlen(line);
+    
+    int pos = 0;
+    *error = 0;
+
+    while (pos < len) 
+    {
+        char c = line[pos];
+
+        if (is_space_char(c)) 
+        {
+            pos++; // move to next char 
+            continue;
+        }
+
+        if (c == '|') 
+        {
+            tv_push(&vec, OP_PIPE, NULL); 
+            //per char type, puh teh token categry as well as the text (null since | already shown with op_pipe)
+            pos++;
+            continue;
+        }
+        if (c == '&') 
+        {
+            tv_push(&vec, OP_AMP, NULL);
+            pos++;
+            continue;
+        }
+        if (c == ';') 
+        {
+            tv_push(&vec, OP_SEMI, NULL);
+            pos++;
+            continue;
+        }
+        if (c == '<') 
+        {
+            tv_push(&vec, OP_LT, NULL);
+            pos++;
+            continue;
+        }
+        if (c == '>') 
+        {
+            // if its >>, then by maximal munch
+            if (pos + 1 < len && line[pos + 1] == '>') 
+            {
+                tv_push(&vec, OP_GTGT, NULL);
+                pos += 2;
+            } 
+            else 
+            {
+                tv_push(&vec, OP_GT, NULL);
+                pos++;
+            }
+            continue;
+        }
+
+
+        int w_error = 0;
+        char *text = lex_word(line, len, &pos, &w_error); // otherwise uses lex word to deal with word lexing
+        if (w_error) 
+        {
+            tv_free_contents(&vec); //free vector 
+            *error = 1;
+            return NULL;
+        }
+        tv_push(&vec, OP_WORD, text); 
+    }
+
+    token_list_t *list = malloc(sizeof(token_list_t)); //turn token_vec into the token_list
+    
+    if (list == NULL) 
+    {
+        fprintf(stderr, "cshell: out of memory\n");
+        exit(1);
+    }
+    
+    list->tokens = vec.items;
+    list->count = vec.count;
+    return list;
+}
+
+//frees token list
+void free_token_list(token_list_t *list) {
+    if (list == NULL) {
+        return;
+    }
+    for (int i = 0; i < list->count; i++) {
+        free(list->tokens[i].text);
+    }
+    free(list->tokens);
+    free(list);
 }
