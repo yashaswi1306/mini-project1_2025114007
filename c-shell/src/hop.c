@@ -227,15 +227,15 @@ void hop_init(const char *home_dir)
             *last_slash = '\0';
             strncpy(history_path, exe_path, PATH_MAX - 15); //cpies executable into history path
             history_path[PATH_MAX - 15] = '\0';
-            strcat(history_path, "/.hop_history");  
+            strcat(history_path, "/hop_hist");  
         } 
         else 
         {
-            snprintf(history_path, sizeof(history_path), "%s/.hop_history", home_dir); //print path with hop history
+            snprintf(history_path, sizeof(history_path), "%s/hop_hist", home_dir); //print path with hop history
         }
     } else 
     {
-        snprintf(history_path, sizeof(history_path), "%s/.hop_history", home_dir); //load old  hist cuz readlink didnt work
+        snprintf(history_path, sizeof(history_path), "%s/hop_hist", home_dir); //load old  hist cuz readlink didnt work
     }
 
     load_history();
