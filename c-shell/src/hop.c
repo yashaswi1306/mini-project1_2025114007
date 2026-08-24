@@ -10,7 +10,7 @@
 #define MAX_ENTRIES 256
 
 #ifndef PATH_MAX
-#define PATH_MAX 5000
+#define PATH_MAX 4096
 #endif
 
 //so struct shld hav the name of dir, time of hop and number of hops, name of directpory and the numer of hops right
@@ -78,22 +78,31 @@ void load_history() {
     fclose(fp);
 }
 
-//scoring ,ethid. Based on frequency, if no frequency, then last access
-int compare_entries(const frecency_entry_t *a, const frecency_entry_t *b) 
+//scoring ,ethid. Based on frequency, if no frequency, then last access // THIS IS NOT FRECENCY CHANGE IT
+int score(const frecency_entry_t *e) 
 {
-    if (b->frequency != a->frequency) 
+    int weight;
+    long now =(long)time(NULL);
+    long t_d = now-e->last_access;
+
+    if (t_d<3600)
     {
-        return b->frequency - a->frequency;
+        weight = 400; // within last hour
     }
-    if (b->last_access > a->last_access) 
+    else if (t_d<86400)
     {
-        return 1;
+        weight=200; // within last day
     }
-    if (b->last_access < a->last_access) 
+    else if (t_d<604800) 
     {
-        return -1;
+        weight = 100;
     }
-    return 0;
+    else
+    {
+        weight = 50; //def for anything older
+    }
+
+    return e->frequency*weight; //HENCE thsi is fecency cuz itd frequency*recency
 }
 
 void update_frecency(const char *abs_path) {
@@ -122,15 +131,18 @@ void update_frecency(const char *abs_path) {
     {
         //noi space then evict the least accessed entry
         int min_idx = 0;
-        for (int i = 1; i < db_count; i++) 
+        int min_sc =score(&db[0]);
+        for (int i=1; i<db_count; i++) 
         {
-            if (compare_entries(&db[i], &db[min_idx]) > 0) {
-                //db[min_idx] is higher rank than db[i], so db[i] is lower in ranking
+            int s = score(&db[i]);
+            if (s<min_sc) 
+            {
+                min_sc =s;
                 min_idx = i;
             }
         }
-        strncpy(db[min_idx].path, abs_path, PATH_MAX - 1);
-        db[min_idx].path[PATH_MAX - 1] = '\0';
+        strncpy(db[min_idx].path, abs_path, PATH_MAX-1);
+        db[min_idx].path[PATH_MAX-1] = '\0';
         db[min_idx].frequency = 1;
         db[min_idx].last_access = (long)time(NULL);
     }
@@ -146,7 +158,7 @@ const char *frecency_lookup(const char *name)
    //sort teh db array to rank the higher rank one on top
     for (int i = 0; i < db_count - 1; i++) {
         for (int j = i + 1; j < db_count; j++) {
-            if (compare_entries(&db[order[i]], &db[order[j]]) > 0) 
+            if (score(&db[order[j]]) > score(&db[order[i]]))
             {
                 int k= order[i];
                 order[i] = order[j];
@@ -238,7 +250,7 @@ void hop(const token_list_t *list) {
     }
 
     //process itt in sequential order
-    for (int i = 1; i < list->count; i++) 
+    for (size_t i = 1; i < list->count; i++) 
     {
         // make sure to skip non words
         if (list->tokens[i].type != OP_WORD) 

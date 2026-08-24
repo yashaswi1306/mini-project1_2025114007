@@ -7,7 +7,7 @@
 #include "locate.h"
 
 #ifndef PATH_MAX
-#define PATH_MAX 5000
+#define PATH_MAX 4096
 #endif
 
 //use same functoion as execute.c
@@ -24,10 +24,10 @@ int locate_is_executable(const char *filepath)
 void locate_single(const char *cmd) 
 {
     int matches = 0; //number of exec files matched
-    char cwd[PATH_MAX+512];
+    char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != NULL)  //get cwd 
     {
-        char cwd_candidate[PATH_MAX]; //dekh liyo ye ek baar 
+        char cwd_candidate[PATH_MAX+512]; //dekh liyo ye ek baar (lol thsi only was the issue)
 
         snprintf(cwd_candidate, sizeof(cwd_candidate), "%s/%s", cwd, cmd);
 

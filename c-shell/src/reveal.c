@@ -8,7 +8,7 @@
 #include "reveal.h"
 
 #ifndef PATH_MAX
-#define PATH_MAX 5000
+#define PATH_MAX 4096
 #endif
 
 char reveal_shell_home[PATH_MAX];

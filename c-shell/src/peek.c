@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include "peek.h"
 
-#define CHUNK 5000
+#define CHUNK 4096
 
 typedef struct{
     char **items;
