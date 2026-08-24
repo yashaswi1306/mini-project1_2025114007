@@ -20,7 +20,7 @@ typedef struct {
 
 typedef struct {
     token_t *tokens; // ai usage here: asked ai how to refine my present architecture. it said make a list of tokens that way u can jst use .count for len and indices for individual tokens.
-    int count;
+    size_t count;
 }token_list_t;
 
 token_list_t* lex_line(const char *line, int *error); 

@@ -29,25 +29,25 @@
 
 typedef struct{
     const token_t *toks; //pointer to array
-    int pos; //pos of tokens
-    int n; // num of tokens
+    size_t pos; //pos of tokens
+    size_t n; // num of tokens
 }parser_t;
 
-int eol(const parser_t*p)//check uf nothing left ot parse
+static int at_end(const parser_t*p)//check uf nothing left ot parse
 {
     return p->pos>=p->n;
 }
 
 
-token_category token_type_parser(const parser_t *p) 
+static token_category token_type_parser(const parser_t *p) 
 {
     return p->toks[p->pos].type;
 }
 
-int ARG(parser_t *p);
-int CMD(parser_t *p);
-int TGT(parser_t *p);
-int BG(parser_t *p);
+static int ARG(parser_t *p);
+static int CMD(parser_t *p);
+static int TGT(parser_t *p);
+static int BG(parser_t *p);
 
 // LINE  ->  ε
 //       |   WORD ARG
@@ -63,8 +63,9 @@ int BG(parser_t *p);
 // TGT   ->  WORD ARG
 // BG    ->  ε
 //       |   WORD ARG
-int CMD(parser_t *p) {
-    if (at_end(p) || token_type_parser(p) != OP_WORD) 
+static int CMD(parser_t *p) 
+{
+    if (at_end(p)||token_type_parser(p)!=OP_WORD) 
     {
         return 0; //check if cmdgoes to word or not
     }
@@ -72,9 +73,9 @@ int CMD(parser_t *p) {
     return ARG(p); //after word parsed, it has to parse arg next
 }
 
-int TGT(parser_t *p) 
+static int TGT(parser_t *p) 
 {
-    if (at_end(p) || token_type_parser(p) != OP_WORD) {
+    if (at_end(p)||token_type_parser(p)!=OP_WORD) {
         return 0;
     }
     p->pos++;
@@ -82,15 +83,17 @@ int TGT(parser_t *p)
 }
 
 
-int BG(parser_t *p) 
+static int BG(parser_t *p) 
 {
-    if (at_end(p)) {
+    if (at_end(p)) 
+    {
         return 1;
     }
     return CMD(p); //goes to word end or goes t word arg which ius same as cmd
 }
 
-int ARG(parser_t *p) {
+static int ARG(parser_t *p) 
+{
     if (at_end(p)) {
         return 1;
     }
@@ -121,11 +124,14 @@ int ARG(parser_t *p) {
     }
 }
 
-int LINE(parser_t *p) {
-    if (at_end(p)) {
+static int LINE(parser_t *p) 
+{
+    if (at_end(p)) 
+    {
         return 1;
     }
-    if (token_type_parser(p) != OP_WORD) {
+    if (token_type_parser(p) != OP_WORD) 
+    {
         return 0;
     }
     p->pos++;
@@ -136,4 +142,3 @@ int parse_tokens(const token_list_t *list) {
     parser_t p = { .toks = list->tokens, .n = list->count, .pos = 0 };
     return LINE(&p);
 }
-

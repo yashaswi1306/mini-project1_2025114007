@@ -3,15 +3,15 @@
 #include <string.h>
 #include "lexer.h"
 
-#define WORD_SIZE 32
-#define TOK_SIZE 8
+#define INITIAL_WORD_CAP 32
+#define INITIAL_TOKEN_CAP 8
 
-int is_special(char c) 
+static int is_special(char c) 
 {
     return c=='<'||c=='>'||c == ';'||c=='|'||c =='&'; //not in word special char
 }
 
-int is_space_char(char c) 
+static int is_space_char(char c) 
 {
     return c==' '||c=='\t'||c=='\n';
 }
@@ -19,14 +19,14 @@ int is_space_char(char c)
 //ai used to change the array code to vector (better for dynamic mem alloc)
 typedef struct {
     token_t *items; //pointer to array
-    int count; //no of items stored
-    int cap; //capacity total
+    size_t count; //no of items stored
+    size_t cap; //capacity total
 }token_vec_t;
 
 //initialise the vec
-void tv_init(token_vec_t *v) 
+static void tv_init(token_vec_t *v) 
 {
-    v->cap = TOK_SIZE;
+    v->cap = INITIAL_TOKEN_CAP;
     v->count = 0;
     v->items = malloc(sizeof(token_t) * v->cap); //allocated memory to vec
     if (v->items == NULL) 
@@ -36,7 +36,7 @@ void tv_init(token_vec_t *v)
     }
 }
 
-void tv_push(token_vec_t *v, token_category type, char *text) {
+static void tv_push(token_vec_t *v, token_category type, char *text) {
     if (v->count == v->cap) 
     {
         v->cap *= 2; //if array full, double capacity
@@ -55,9 +55,9 @@ void tv_push(token_vec_t *v, token_category type, char *text) {
     v->count++;
 }
 
-void tv_free_contents(token_vec_t *v) 
+static void tv_free_contents(token_vec_t *v) 
 {
-    for (int i = 0; i < v->count; i++) 
+    for (size_t i = 0; i < v->count; i++) 
     {
         free(v->items[i].text); //free individual tokens
     }
@@ -72,9 +72,9 @@ typedef struct {
 } word_t;
 
 //same as token mem allication function
-void word_init(word_t *b) 
+static void word_init(word_t *b) 
 {
-    b->cap = WORD_SIZE; 
+    b->cap = INITIAL_WORD_CAP; 
     b->len = 0;
     b->data = malloc(b->cap);
     if (b->data == NULL) 
@@ -85,7 +85,7 @@ void word_init(word_t *b)
     b->data[0] = '\0'; // null terminator for end of word
 }
 
-void word_push(word_t *b, char c) {
+static void word_push(word_t *b, char c) {
     if (b->len + 2 > b->cap) //+2 cux null terminator bhi hai naa (so new char + \0)
     { 
         b->cap *= 2;
@@ -101,7 +101,7 @@ void word_push(word_t *b, char c) {
 }
 
 
-static char *lex_word(const char *line, int len, int *pos, int *error) 
+static char *lex_word(const char *line, size_t len, size_t *pos, int *error) 
 {
     //tokenizationnnnnn 
     word_t word;
@@ -168,7 +168,7 @@ static char *lex_word(const char *line, int len, int *pos, int *error)
                 word_push(&word, dc);
                 (*pos)++;
             }
-            if (!closed) 
+            if (!closed)
             { //not closed
                 *error = 1;
                 free(word.data);
@@ -214,10 +214,10 @@ token_list_t *lex_line(const char *line, int *error) //lexer for one inpput line
 {
     token_vec_t vec; 
     tv_init(&vec);
-
-    int len = strlen(line);
     
-    int pos = 0;
+    size_t len = strlen(line);
+    
+    size_t pos = 0;
     *error = 0;
 
     while (pos < len) 
@@ -301,7 +301,7 @@ void free_token_list(token_list_t *list) {
     if (list == NULL) {
         return;
     }
-    for (int i = 0; i < list->count; i++) {
+    for (size_t i = 0; i < list->count; i++) {
         free(list->tokens[i].text);
     }
     free(list->tokens);

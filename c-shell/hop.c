@@ -8,7 +8,10 @@
 #include "hop.h"
 
 #define MAX_ENTRIES 256
+
+#ifndef PATH_MAX
 #define PATH_MAX 5000
+#endif
 
 //so struct shld hav the name of dir, time of hop and number of hops, name of directpory and the numer of hops right
 typedef struct {
@@ -57,7 +60,7 @@ void load_history() {
             while (*p && ((*p >= '0' && *p <= '9') || *p == '-')) p++; //ignore the lastaccess numbers
             while (*p && (*p == ' ' || *p == '\t')) p++; //ignore the spavces before the actual address
 
-            int len_p = strlen(p);
+            size_t len_p = strlen(p);
             while (len_p > 0 && (p[len_p - 1] == '\n' || p[len_p - 1] == '\r')) {
                 p[len_p - 1] = '\0'; 
                 len_p--;

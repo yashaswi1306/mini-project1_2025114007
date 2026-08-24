@@ -7,8 +7,9 @@
 #include <limits.h>
 #include "reveal.h"
 
+#ifndef PATH_MAX
 #define PATH_MAX 5000
-
+#endif
 
 char reveal_shell_home[PATH_MAX];
 
@@ -17,10 +18,7 @@ int cmp_names(const void *a, const void *b)
     return strcmp(*(const char **)a, *(const char **)b); // cmp so that u can do -t for lexographic order
 }
 
-void reveal_save(const char *home_dir) {
-    strncpy(reveal_shell_home, home_dir, PATH_MAX - 1);
-    reveal_shell_home[PATH_MAX - 1] = '\0';
-}
+//duplicate function tha so removed
 
 void reveal_init(const char *home_dir) // saves a coy of teh home ir into a local variavble
 {
@@ -28,7 +26,7 @@ void reveal_init(const char *home_dir) // saves a coy of teh home ir into a loca
     reveal_shell_home[PATH_MAX - 1] = '\0';
 }
 
-int resolve_target(const char *arg, char *out, int outsize) 
+int resolve_target(const char *arg, char *out, size_t outsize) 
 {
     if (arg == NULL || strcmp(arg, ".") == 0) 
     {
@@ -83,7 +81,7 @@ void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int fl
     if (d == NULL) return;
 
 
-    int cap = 64, count = 0; // item names in dir names
+    size_t cap = 64, count = 0; // item names in dir names
     char **names = malloc(sizeof(char *) * cap);
     if (names == NULL) 
     { 
@@ -113,7 +111,7 @@ void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int fl
     qsort(names, count, sizeof(char *), cmp_names);
 
     // print and recures through files
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         char full[PATH_MAX];
         snprintf(full, sizeof(full), "%s/%s", dir_path, names[i]);
 
@@ -153,7 +151,7 @@ void reveal(const token_list_t *list)
     const char *target = NULL;
 
     // parse flags and the path argument
-    for (int i = 1; i < list->count; i++) 
+    for (size_t i = 1; i < list->count; i++) 
     {
         if (list->tokens[i].type != OP_WORD) continue; 
         const char *arg = list->tokens[i].text;

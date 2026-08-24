@@ -6,9 +6,13 @@
 #include <limits.h>
 #include "locate.h"
 
+#ifndef PATH_MAX
 #define PATH_MAX 5000
+#endif
+
 //use same functoion as execute.c
-int locate_is_executable(const char *filepath) {
+int locate_is_executable(const char *filepath) 
+{
     struct stat st;
     if (access(filepath, X_OK) != 0) return 0;
     if (stat(filepath, &st) != 0) return 0;
@@ -20,7 +24,7 @@ int locate_is_executable(const char *filepath) {
 void locate_single(const char *cmd) 
 {
     int matches = 0; //number of exec files matched
-    char cwd[PATH_MAX];
+    char cwd[PATH_MAX+512];
     if (getcwd(cwd, sizeof(cwd)) != NULL)  //get cwd 
     {
         char cwd_candidate[PATH_MAX]; //dekh liyo ye ek baar 
@@ -72,7 +76,7 @@ void locate_single(const char *cmd)
 void locate (const token_list_t *list)
 {
     int arg_count=0; //arguments given to loacte
-      for (int i = 1; i < list->count; i++) 
+      for (size_t i = 1; i < list->count; i++) 
       {
         if (list->tokens[i].type == OP_WORD) 
         {
@@ -83,6 +87,7 @@ void locate (const token_list_t *list)
     if(arg_count==0)
     {
         printf("locate: invalid syntax\n"); //if no args, then invalidb code
+        return;
     }
 
     for (size_t i = 1; i < list->count; i++) 
