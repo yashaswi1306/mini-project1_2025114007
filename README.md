@@ -2,6 +2,8 @@
 
 Yashaswi Priya : 2025114007
 
+GITHUB LINK: https://github.com/yashaswi1306/mini-project1_2025114007
+
 ## Part wise breakdown of files:
 A1: Shell Prompt : main.c  
 A2: User Input : lexer.c  
