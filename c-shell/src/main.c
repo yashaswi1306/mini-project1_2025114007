@@ -11,6 +11,9 @@
 #include "peek.h"
 #include "locate.h"
 #include "execute.h"
+#include <errno.h>
+#include <signal.h>
+#include "jobs.h"
 
 #define MAX_INPUT_LEN 1024
 
@@ -82,29 +85,140 @@ static void print_prompt(void)
     fflush(stdout);
 }
 
+static volatile sig_atomic_t prompt_interrupted=0;
+
+static void sigint_handler(int sig) 
+{
+    (void)sig;
+    prompt_interrupted=1;
+}
+
+static void sigtstp_handler(int sig) 
+{
+    (void)sig;
+    prompt_interrupted=1;
+}
+
 int main(void) 
 {
-    char line[MAX_INPUT_LEN + 1];
+    char line[MAX_INPUT_LEN+1];
+    static char accum_line[MAX_INPUT_LEN+1] = "";
 
     init_shell_identity();
     hop_init(home_dir);
     reveal_init(home_dir);
+    jobs_init();
+struct sigaction sa_int;
+    memset(&sa_int, 0, sizeof(sa_int));
+    sa_int.sa_handler = sigint_handler;
+    sigemptyset(&sa_int.sa_mask);
+    sa_int.sa_flags = 0;
+    sigaction(SIGINT, &sa_int, NULL);
 
-    print_prompt();
-    while (fgets(line, sizeof(line), stdin) != NULL) {
-        size_t len = strlen(line);
-        if (len > 0 && line[len - 1] == '\n') 
+    struct sigaction sa_tstp;
+    memset(&sa_tstp, 0, sizeof(sa_tstp));
+    sa_tstp.sa_handler = sigtstp_handler;
+    sigemptyset(&sa_tstp.sa_mask);
+    sa_tstp.sa_flags = 0;
+    sigaction(SIGTSTP, &sa_tstp, NULL);
+
+    signal(SIGTTOU, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+
+    int eof_warned = 0;
+
+    while (1) {
+        if (accum_line[0] == '\0') 
         {
-            line[len - 1] = '\0';
+            jobs_check_completed();
+            print_prompt();
         }
 
+        if (fgets(line, sizeof(line), stdin) == NULL) 
+        {
+            if (errno == EINTR) 
+            {
+                if (prompt_interrupted) 
+                {
+                    printf("\n");
+                    prompt_interrupted = 0;
+                    accum_line[0] = '\0';
+                }
+                clearerr(stdin);
+                continue;
+            }
+
+            if (accum_line[0] != '\0') 
+            {
+                if (!isatty(STDIN_FILENO) && feof(stdin)) 
+                {
+                    // In batch mode with no trailing newline, fall through to execute accum_line
+                }
+                else 
+                {
+                    // Requirement 9: Ctrl-D only counts as EOF on an empty line.
+                    // If the line already has typed text, keep that text and stay alive.
+                    clearerr(stdin);
+                    continue;
+                }
+            }
+            else 
+            {
+                if (jobs_has_stopped()) 
+                {
+                    if (!eof_warned) 
+                    {
+                        printf("cshell: there are stopped jobs\n");
+                        fflush(stdout);
+                        eof_warned = 1;
+                        clearerr(stdin);
+                        continue;
+                    }
+                }
+                jobs_send_sighup_all();
+                break;
+            }
+        }
+
+        if (line[0] != '\0') 
+        {
+            size_t cur = strlen(accum_line);
+            size_t add = strlen(line);
+            if (cur + add < sizeof(accum_line)) 
+            {
+                strcat(accum_line, line);
+            }
+        }
+
+        size_t total_len = strlen(accum_line);
+        if (total_len == 0) 
+        {
+            continue;
+        }
+
+        if (accum_line[total_len - 1] != '\n' && isatty(STDIN_FILENO)) 
+        {
+            // Requirement 9: Ctrl-D only counts as EOF on an empty line.
+            // If the line already has typed text, keep that text and stay alive.
+            clearerr(stdin);
+            continue;
+        }
+
+        if (accum_line[total_len - 1] == '\n') 
+        {
+            accum_line[total_len - 1] = '\0';
+        }
+
+        eof_warned = 0;
+
         int lex_error = 0;
-        token_list_t *tokens = lex_line(line, &lex_error); //lex the line first
+        token_list_t *tokens = lex_line(accum_line, &lex_error); //lex the line first
+
+        accum_line[0] = '\0';
 
         if (lex_error) 
         {
             printf("cshell: invalid syntax\n"); //if lex error invalid syntax
-            print_prompt();
             continue;
         }
 
@@ -114,31 +228,18 @@ int main(void)
         {
             printf("cshell: invalid syntax\n"); // if parse error , invalid syntax
             free_token_list(tokens);
-            print_prompt();
             continue;
         }
 
-    
-        for (size_t i = 0; i < tokens->count; i++) 
+        if (tokens->count > 0) 
         {
-            if (tokens->tokens[i].type == OP_SEMI || tokens->tokens[i].type == OP_AMP) 
-            {
-                tokens->count = i; //trucate tokens at ; or & so that u have 1st command grp
-                //so for echo hi; echo hello, only echo hi is seen
-                break;
-            }
-        }
-
-        
-        if (tokens->count > 0 && tokens->tokens[0].type == OP_WORD) {
-            execute_pipeline(tokens); //pipeline execution
+            execute_command_line(tokens);
         }
 
         free_token_list(tokens);
-
-        print_prompt();
     }
 
+    jobs_send_sighup_all();
     printf("\n");
     return 0;
 }
