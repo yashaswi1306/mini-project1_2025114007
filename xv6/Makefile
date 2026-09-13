@@ -80,7 +80,7 @@ CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
-# added merese new
+# added new
 ifdef SCHEDULER # eg. scheduler=fifo
 CFLAGS += -D$(SCHEDULER) -DSCHEDULER_$(SCHEDULER) #flags for compilation
 endif

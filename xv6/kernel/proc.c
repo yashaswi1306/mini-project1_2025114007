@@ -883,7 +883,7 @@ procdump(void)
       state = "???";
 //added
 #ifdef SCHEDULER_MLFQ
-    printk("%d %s %s priority=%d ticks_used=%d\n", p->pid, state, p->name, p->priority, p->ticks_used);
+    printk("%d %s %s priority=%d ticks_used=%d\n", p->pid, p->name, state,p->priority, p->ticks_used);
 #else
     printk("%d %s %s\n", p->pid, state, p->name);
 #endif
