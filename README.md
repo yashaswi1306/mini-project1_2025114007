@@ -21,6 +21,18 @@ C2: Input Redirection : execute.c
 C3: Output Redirection : execute.c  
 C4: Command Piping : execute.c  
 
+D1: execute.c jobs.c  
+D2: execute.c jobs.c  
+
+
+E1: activities.c  
+E2: main.c  
+E3: resume.c  
+E4: ping.c  
+
+
+F1: spy.c  
+F2: snoop.c
 
 ## How to run:
 
