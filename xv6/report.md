@@ -93,6 +93,8 @@ boost: the global prioirty boost occurs at every 48 seconds. The use of a priori
 | MLFQ | 4 | 0 | 0 |
 | RR | 4 | 0 | 0 |
 
+//added 2 sets of responses for double checking  
+
 FIFO has the highest turnaround time and the highest wait time.  
 THis is beacause FIFO is NON preemptive, meaning that quick tasks get stuck behind longer ones. Fifo processes tasks in order, so  first task is run immediately, but completion takes longer cuz of delays.  
 RR has its wait time depend upon quantam size.  
