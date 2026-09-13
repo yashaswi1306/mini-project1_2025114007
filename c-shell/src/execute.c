@@ -473,6 +473,304 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
     return 1;
 }
 
+static void execute_stage_child(const token_list_t *list)
+{
+    if (list == NULL || list->count == 0) 
+    {
+        exit(0);
+    }
+
+    if (list->tokens[0].type == OP_WORD) 
+    {
+        const char *cmd_name = list->tokens[0].text;
+        if (strcmp(cmd_name, "hop") == 0) { hop(list); exit(0); }
+        else if (strcmp(cmd_name, "reveal") == 0) { reveal(list); exit(0); }
+        else if (strcmp(cmd_name, "peek") == 0) { peek(list); exit(0); }
+        else if (strcmp(cmd_name, "locate") == 0) { locate(list); exit(0); }
+        else if (strcmp(cmd_name, "activities") == 0) { activities(); exit(0); }
+        else if (strcmp(cmd_name, "resume") == 0) { resume_cmd(list); exit(0); }
+        else if (strcmp(cmd_name, "ping") == 0) { ping_cmd(list); exit(0); }
+        else if (strcmp(cmd_name, "spy") == 0) { spy_cmd(list); exit(0); }
+        else if (strcmp(cmd_name, "snoop") == 0) { snoop_cmd(list); exit(0); }
+    }
+
+    char *argv[256];
+    int argc = 0;
+    const char *input_files[256];
+    int num_inputs = 0;
+    typedef struct {
+        const char *path;
+        int is_append;
+    } redir_output_t;
+    redir_output_t output_files[256];
+    int num_outputs = 0;
+
+    for (size_t i = 0; i < list->count; i++) 
+    {
+        if (list->tokens[i].type == OP_LT) 
+        {
+            if (i + 1 < list->count && list->tokens[i + 1].type == OP_WORD) 
+            {
+                input_files[num_inputs++] = list->tokens[i + 1].text;
+                i++;
+            } 
+            else 
+            {
+                printf("cshell: invalid syntax\n");
+                exit(1);
+            }
+        } 
+        else if (list->tokens[i].type == OP_GT) 
+        {
+            if (i + 1 < list->count && list->tokens[i + 1].type == OP_WORD) 
+            {
+                output_files[num_outputs].path = list->tokens[i + 1].text;
+                output_files[num_outputs].is_append = 0;
+                num_outputs++;
+                i++;
+            } 
+            else 
+            {
+                printf("cshell: invalid syntax\n");
+                exit(1);
+            }
+        } 
+        else if (list->tokens[i].type == OP_GTGT) 
+        {
+            if (i + 1 < list->count && list->tokens[i + 1].type == OP_WORD) 
+            {
+                output_files[num_outputs].path = list->tokens[i + 1].text;
+                output_files[num_outputs].is_append = 1;
+                num_outputs++;
+                i++;
+            } 
+            else 
+            {
+                printf("cshell: invalid syntax\n");
+                exit(1);
+            }
+        } 
+        else if (list->tokens[i].type == OP_WORD && argc < 255) 
+        {
+            argv[argc++] = list->tokens[i].text;
+        }
+    }
+    argv[argc] = NULL;
+
+    if (argc == 0) 
+    {
+        exit(0);
+    }
+
+    for (int i = 0; i < num_inputs; i++) 
+    {
+        int fd = open(input_files[i], O_RDONLY);
+        if (fd < 0) 
+        {
+            printf("cshell: no such file or directory\n");
+            exit(1);
+        }
+        close(fd);
+    }
+
+    int out_fds[256];
+    for (int i = 0; i < num_outputs; i++) 
+    {
+        int mid = output_files[i].is_append ? O_APPEND : O_TRUNC;
+        int flags = O_WRONLY | O_CREAT | mid;
+        out_fds[i] = open(output_files[i].path, flags, 0644);
+        if (out_fds[i] < 0) 
+        {
+            printf("cshell: unable to create file for writing\n");
+            exit(1);
+        }
+    }
+
+    const char *raw_cmd = argv[0];
+    int skip_cwd = 0;
+    const char *cmd_name = raw_cmd;
+    if (raw_cmd[0] == '%') 
+    {
+        skip_cwd = 1;
+        cmd_name = raw_cmd + 1;
+        argv[0] = (char *)cmd_name;
+    }
+
+    char *exec_path = NULL;
+    if (!skip_cwd && strchr(cmd_name, '/') != NULL) 
+    {
+        if (execute_is_executable(cmd_name)) 
+        {
+            exec_path = strdup(cmd_name);
+        }
+    } 
+    else 
+    {
+        if (!skip_cwd) 
+        {
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) 
+            {
+                char cwd_candidate[PATH_MAX + 512];
+                snprintf(cwd_candidate, sizeof(cwd_candidate), "%s/%s", cwd, cmd_name);
+                if (execute_is_executable(cwd_candidate)) 
+                {
+                    exec_path = strdup(cwd_candidate);
+                }
+            }
+        }
+        if (exec_path == NULL) 
+        {
+            const char *env_path = getenv("PATH");
+            if (env_path != NULL && strlen(env_path) > 0) 
+            {
+                char *path_copy = strdup(env_path);
+                if (path_copy != NULL) 
+                {
+                    char *saveptr = NULL;
+                    char *dir = strtok_r(path_copy, ":", &saveptr);
+                    while (dir != NULL) 
+                    {
+                        char candidate[PATH_MAX + 512];
+                        if (strlen(dir) == 0) 
+                        {
+                            char cwd[PATH_MAX];
+                            if (getcwd(cwd, sizeof(cwd)) != NULL) 
+                            {
+                                snprintf(candidate, sizeof(candidate), "%s/%s", cwd, cmd_name);
+                            } 
+                            else 
+                            {
+                                snprintf(candidate, sizeof(candidate), "%s", cmd_name);
+                            }
+                        } 
+                        else 
+                        {
+                            snprintf(candidate, sizeof(candidate), "%s/%s", dir, cmd_name);
+                        }
+                        if (execute_is_executable(candidate)) 
+                        {
+                            exec_path = strdup(candidate);
+                            break;
+                        }
+                        dir = strtok_r(NULL, ":", &saveptr);
+                    }
+                    free(path_copy);
+                }
+            }
+        }
+    }
+
+    if (exec_path == NULL) 
+    {
+        printf("cshell: command not found (%s)\n", cmd_name);
+        exit(1);
+    }
+
+    signal(SIGINT, SIG_DFL);
+    signal(SIGTSTP, SIG_DFL);
+    signal(SIGTTIN, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
+
+    if (num_inputs == 1) 
+    {
+        int in_fd = open(input_files[0], O_RDONLY);
+        if (in_fd >= 0) 
+        {
+            dup2(in_fd, STDIN_FILENO);
+            close(in_fd);
+        }
+    } 
+    else if (num_inputs > 1) 
+    {
+        int pfd[2];
+        if (pipe(pfd) == 0) 
+        {
+            pid_t feeder = fork();
+            if (feeder == 0) 
+            {
+                close(pfd[0]);
+                for (int i = 0; i < num_inputs; i++) 
+                {
+                    int f = open(input_files[i], O_RDONLY);
+                    if (f >= 0) 
+                    {
+                        char buf[4096];
+                        ssize_t bytes;
+                        while ((bytes = read(f, buf, sizeof(buf))) > 0) 
+                        {
+                            ssize_t written = 0;
+                            while (written < bytes) 
+                            {
+                                ssize_t w = write(pfd[1], buf + written, bytes - written);
+                                if (w <= 0) break;
+                                written += w;
+                            }
+                        }
+                        close(f);
+                    }
+                }
+                close(pfd[1]);
+                exit(0);
+            }
+            close(pfd[1]);
+            dup2(pfd[0], STDIN_FILENO);
+            close(pfd[0]);
+            waitpid(feeder, NULL, 0);
+        }
+    }
+
+    if (num_outputs == 1) 
+    {
+        dup2(out_fds[0], STDOUT_FILENO);
+        close(out_fds[0]);
+    } 
+    else if (num_outputs > 1) 
+    {
+        int out_pfd[2];
+        if (pipe(out_pfd) == 0) 
+        {
+            pid_t writer = fork();
+            if (writer == 0) 
+            {
+                close(out_pfd[1]);
+                char buf[4096];
+                ssize_t bytes;
+                while ((bytes = read(out_pfd[0], buf, sizeof(buf))) > 0) 
+                {
+                    for (int i = 0; i < num_outputs; i++) 
+                    {
+                        ssize_t written = 0;
+                        while (written < bytes) 
+                        {
+                            ssize_t w = write(out_fds[i], buf + written, bytes - written);
+                            if (w <= 0) break;
+                            written += w;
+                        }
+                    }
+                }
+                close(out_pfd[0]);
+                for (int i = 0; i < num_outputs; i++) 
+                {
+                    close(out_fds[i]);
+                }
+                exit(0);
+            }
+            close(out_pfd[0]);
+            dup2(out_pfd[1], STDOUT_FILENO);
+            close(out_pfd[1]);
+            for (int i = 0; i < num_outputs; i++) 
+            {
+                close(out_fds[i]);
+            }
+        }
+    }
+
+    execv(exec_path, argv);
+    perror("cshell");
+    exit(1);
+}
+
 int execute_cmd(const token_list_t *list) 
 {
     return execute_cmd_internal(list, 0, 0, NULL, NULL);
@@ -633,11 +931,6 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
                 setpgid(0, pids[0]);
             }
 
-            signal(SIGINT, SIG_DFL);
-            signal(SIGTSTP, SIG_DFL);
-            signal(SIGTTIN, SIG_DFL);
-            signal(SIGTTOU, SIG_DFL);
-
             int has_input_redir = 0;
             for (size_t k=0; k<stages[i].count; k++) 
             {
@@ -674,57 +967,7 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
                 .count = stages[i].count
             };
 
-            if (stage_list.count > 0 && stage_list.tokens[0].type == OP_WORD) 
-            {
-                const char *cmd_name = stage_list.tokens[0].text;
-                if (strcmp(cmd_name, "hop")==0) 
-                {
-                    hop(&stage_list);
-                    exit(0);
-                } 
-                else if (strcmp(cmd_name, "reveal")==0) 
-                {
-                    reveal(&stage_list);
-                    exit(0);
-                } 
-                else if (strcmp(cmd_name, "peek")==0) 
-                {
-                    peek(&stage_list);
-                    exit(0);
-                } 
-                else if (strcmp(cmd_name, "locate")==0) 
-                {
-                    locate(&stage_list);
-                    exit(0);
-                }
-                else if (strcmp(cmd_name, "activities")==0) 
-                {
-                    activities();
-                    exit(0);
-                }
-                else if (strcmp(cmd_name, "resume")==0) 
-                {
-                    resume_cmd(&stage_list);
-                    exit(0);
-                }
-                else if (strcmp(cmd_name, "ping")==0) 
-                {
-                    ping_cmd(&stage_list);
-                    exit(0);
-                }
-                else if (strcmp(cmd_name, "spy")==0) 
-                {
-                    spy_cmd(&stage_list);
-                    exit(0);
-                }
-                else if (strcmp(cmd_name, "snoop")==0) 
-                {
-                    snoop_cmd(&stage_list);
-                    exit(0);
-                }
-            }
-
-            execute_cmd(&stage_list);
+            execute_stage_child(&stage_list);
             exit(0);
         }
         else 
@@ -740,15 +983,15 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
         }
     }
 
-    if (isatty(STDIN_FILENO)) 
-    {
-        tcsetpgrp(STDIN_FILENO, pids[0]);
-    }
-
     for (int j = 0; j < stage_count - 1; j++) 
     {
         close(pipes[j][0]);
         close(pipes[j][1]);
+    }
+
+    if (isatty(STDIN_FILENO)) 
+    {
+        tcsetpgrp(STDIN_FILENO, pids[0]);
     }
 
     int any_stopped = 0;
@@ -990,11 +1233,6 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
             (void)r;
             close(sync_pfd[0]);
 
-            signal(SIGINT, SIG_DFL);
-            signal(SIGTSTP, SIG_DFL);
-            signal(SIGTTIN, SIG_DFL);
-            signal(SIGTTOU, SIG_DFL);
-
             int has_input_redir = 0;
             for (size_t k = 0; k < stages[i].count; k++) 
             {
@@ -1034,21 +1272,7 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
                 .count = stages[i].count
             };
 
-            if (stage_list.count > 0 && stage_list.tokens[0].type == OP_WORD) 
-            {
-                const char *s_cmd = stage_list.tokens[0].text;
-                if (strcmp(s_cmd, "hop") == 0) { hop(&stage_list); exit(0); }
-                else if (strcmp(s_cmd, "reveal") == 0) { reveal(&stage_list); exit(0); }
-                else if (strcmp(s_cmd, "peek") == 0) { peek(&stage_list); exit(0); }
-                else if (strcmp(s_cmd, "locate") == 0) { locate(&stage_list); exit(0); }
-                else if (strcmp(s_cmd, "activities") == 0) { activities(); exit(0); }
-                else if (strcmp(s_cmd, "resume") == 0) { resume_cmd(&stage_list); exit(0); }
-                else if (strcmp(s_cmd, "ping") == 0) { ping_cmd(&stage_list); exit(0); }
-                else if (strcmp(s_cmd, "spy") == 0) { spy_cmd(&stage_list); exit(0); }
-                else if (strcmp(s_cmd, "snoop") == 0) { snoop_cmd(&stage_list); exit(0); }
-            }
-
-            execute_cmd(&stage_list);
+            execute_stage_child(&stage_list);
             exit(0);
         }
         else 
