@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np 
 
 plt.figure(figsize=(12, 6))
-# ticks timeline (0-120 ticks)
-ticks = np.arange(0, 120, 1) # time array from 0 to 119
+# ticks timeline (0-144 ticks)
+ticks = np.arange(0, 144, 1) # time array from 0 to 143
 
 # simulate 3 processes moving through MLFQ queues
 # pid3: heavy cpu process
@@ -60,7 +60,7 @@ plt.grid(True, linestyle=':', alpha=0.5) # turn on dot matrix gridd
 plt.legend(loc='right') # legend
 
 # watermark
-plt.text(60, 2, 'yashaswi.priya', fontsize=20, color='black', alpha=0.2)
+plt.text(70, 2, 'yashaswi.priya', fontsize=20, color='black', alpha=0.2)
 
 plt.tight_layout() # fix spacng 
 plt.savefig('mlfq_timeline.png', dpi=100)
