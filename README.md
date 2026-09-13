@@ -43,3 +43,18 @@ make clean
 make all
 ./shell.out
 ```
+
+## Assumptions:
+
+MAX_INPUT_LEN: 1024 bytes  
+INITIAL_WORD_CAP:  32 chars  
+PATH_MAX: 4096 bytes  
+MAX_BG_JOBS: 256  
+MAX_PIDS_PER_JOB: 64  
+MAX_ENTRIES: 256(hop)  
+INITIAL_TOKEN_CAP: 8  
+CHUNCK:  4096  
+MAX_SYSCALLS: 1024  
+MAX_MEM_FIES: 512  
+reset ticks used on sleep in mlfq    
+
