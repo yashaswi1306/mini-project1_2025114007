@@ -96,7 +96,7 @@ boost: the global prioirty boost occurs at every 48 seconds. proc 5 isnt much af
 | RR | 4 | 0 | 0 |
 
 FIFO has the highest turnaround time and the highest wait time.  
-THis is beacause FIFO is NON preemptive, meaning that quick tasks get stuck behind longer ones.  
+THis is beacause FIFO is NON preemptive, meaning that quick tasks get stuck behind longer ones. Fifo processes tasks in order, so  first task is run immediately, but completion takes longer cuz of delays.  
 RR has its wait time depend upon quantam size.  
-So if quantam is small, theres a ton of context switching. Else, it behaves as a FFO system.  
+So if quantam is small, theres a ton of context switching. Else, it behaves as a FIFO system. 
 MLFQ has least waiting time as it keeps io bound tasks at high priority and cpu bound ones at lower probability.
