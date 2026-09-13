@@ -1,3 +1,159 @@
+commit e45ff9d09a69532c424e1526c53416bcc00ac37a
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 15:06:44 2026 +0530
+
+    spelling wrror report.md
+
+commit 23df0d29d3dceacfd6ef914c6f3a1fd78eef73d4
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 15:04:24 2026 +0530
+
+    report.md fin
+
+commit bc055f48782bb2eca98aac0841a466b21694c67a
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 14:33:33 2026 +0530
+
+    edit schedtest.c
+
+commit ecaa404118ab4d17fe601b282cda83d8bb901cee
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 17:34:06 2026 +0530
+
+    report.md 2.3.2 done
+
+commit 8c29166212b61d16b525e4ac2047e3af62b4b64c
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 17:02:54 2026 +0530
+
+    graph plotting code
+
+commit c1d5441fb0004b497c5cd2ff8bb53aa54de2e984
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 16:45:09 2026 +0530
+
+    2.3.1 done
+
+commit d9e55415ad690b38f97e1f17688f2790dce00ba4
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 16:44:47 2026 +0530
+
+    edited files
+
+commit a33a833552c4aa076485c74fbe99520dd3c2c9d4
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 16:09:04 2026 +0530
+
+    schedtest update
+
+commit d85fa2a843ea56adb02fa80fa4fa1abb79c150c8
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 10:00:54 2026 +0530
+
+    readme
+
+commit 34c8d179c97e3f46ff14a9228021f973814c7bf0
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 09:23:52 2026 +0530
+
+    edit proc and trap
+
+commit 86ec5ebfc27c725d519565f5b3d4be8aa9547cf8
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 08:45:41 2026 +0530
+
+    REad me add the d,e,f part (assumptions left (add when rereading all files))
+
+commit 1fe8365a30c41e6aba1922b58f4bead779ff1f92
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 08:44:54 2026 +0530
+
+    edited xv6 files
+
+commit 4ae92dded83857b3c0a33567dd44f9e9bc701bb4
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 06:00:05 2026 +0530
+
+    new fields added to struct to store var for mlfq
+
+commit f45ebf639c3fb374aac9da00b02b6cbfcc94afd2
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 05:55:17 2026 +0530
+
+    all xv6 edited files
+
+commit 3780af4e236375f69e2f5b749c1eaf0720297816
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 05:54:21 2026 +0530
+
+    makefile modified. Had to rm rf to remove xv6 from submodule to dir. I hope that dsnt break something :(
+
+commit 2db2e8d2434800a14e9c1c92112503d63d124bd5
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 14:37:21 2026 +0530
+
+    hop hist modified
+
+commit f59f8f723590e2d7fe8bec5530b1d90a5eef7001
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 14:32:55 2026 +0530
+
+    execute edited final ver
+
+commit 547537f65514c192612b7cf8618687a6ed9cb765
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 14:32:24 2026 +0530
+
+    c-shell/include/execute.h
+
+commit 46f6363fd7a27d462ee9b7db621cd685eb9b0fcb
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 14:31:40 2026 +0530
+
+    E4 part implemented (prev was e3 accidentally wrote e4)
+
+commit 3122cef91dba6bd956a983e092b0aad7bbe6a1dd
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 14:30:52 2026 +0530
+
+    E4 part implemeted
+
+commit 8eb42626adec1fd8a8603637be5a493178775058
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 19:20:27 2026 +0530
+
+    E2 implemented in main.c
+
+commit eac3b08a522aca39729a62a2257a5d05eb7190c5
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 19:09:00 2026 +0530
+
+    E1 part
+
+commit beb084042bf537bb07808d7a94ec4fc8080d6662
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 18:43:37 2026 +0530
+
+    job files
+
+commit 92a37765e85d756de012cdf3171bccde8d7e6df5
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sat Sep 12 03:40:37 2026 +0530
+
+    part f2 done
+
+commit cf8af09ba6ea1840c2425ae633ad5441c04f8990
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Fri Sep 11 19:17:30 2026 +0530
+
+    part f1 spy.h and spy.c
+
+commit 9b36ca51d9637b542afdc8c544f77bf142bef3f2
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Tue Aug 25 23:35:09 2026 +0530
+
+    git log
+
 commit 56f6fc94a2e54644a661d80a4f94fca056278a9b
 Author: yashaswi1306 <yashaswi130607@gmail.com>
 Date:   Tue Aug 25 22:25:39 2026 +0530
