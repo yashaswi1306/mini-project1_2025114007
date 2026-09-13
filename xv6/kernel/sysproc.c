@@ -39,11 +39,12 @@ sys_wait(void)
 uint64 //addedd
 sys_waitx(void)
 {
-  uint64 p, rtime, wtime;
+  uint64 p, rtime, wtime, retime;
   argaddr(0, &p);
   argaddr(1, &rtime);
   argaddr(2, &wtime);
-  return waitx(p, rtime, wtime);
+  argaddr(3, &retime);
+  return waitx(p, rtime, wtime, retime);
 }
 
 uint64

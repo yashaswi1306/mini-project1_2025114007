@@ -30,7 +30,7 @@ first_run to -1 since proc hasnt yet been scheduled
 
 4. queue selection/preemption logic  
 
-RR: default  
+RR: preemptive rr via runnable processes  
 MLFQ: preemptive multi queue scheduling (scans queue in order of 0 to 3). if process in higher queue becomes runnable, scheduler pre empts curr process.  
 FIFO: non preemptice. scheduler searched process table fr earliest ctime for runnable proc. so timer interrupt preemptive yield() is disabled under FIFO.  
 
@@ -87,3 +87,4 @@ pid 3 (pink) : this is a heavily cpu bound process, and drops to last priority a
 
 boost: the global prioirty boost occurs at every 48 seconds. proc 5 isnt much affected by it, because the use of a priority boost is to make sure cpu bound tasks are not starved for execution time. So, at 48 and 96, all processes are returned to priority 0, which helps prevent starvaion of pid 4 and pid 3.
 
+## 2.3.3 Comparison Results

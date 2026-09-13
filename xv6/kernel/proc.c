@@ -442,7 +442,7 @@ kwait(uint64 addr)
 // Extended wait system call: waitx
 //added 
 int
-waitx(uint64 addr, uint64 rtime, uint64 wtime) 
+waitx(uint64 addr, uint64 rtime, uint64 wtime, uint64 retime) 
 {
   struct proc *pp; // ptr to loop thru procs
   int havekids, pid; // flags for kids and thier id
@@ -473,6 +473,14 @@ waitx(uint64 addr, uint64 rtime, uint64 wtime)
             release(&wait_lock); // drop wait lock
             return -1; // error out
           } 
+          if (retime != 0) {
+            int response_time = (pp->first_run >= 0) ? (pp->first_run - pp->ctime) : 0;
+            if (copyout(p->pagetable, p->sz, retime, (char *)&response_time, sizeof(response_time)) < 0) {
+              release(&pp->lock);
+              release(&wait_lock);
+              return -1;
+            }
+          }
 
           pp->parent = 0; // rmove parent ties
           freeproc(pp); // free  proc

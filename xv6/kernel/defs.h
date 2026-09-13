@@ -98,7 +98,7 @@ void            sleep_prepare(void*);
 void            sleep(void);
 void            userinit(void);
 int             kwait(uint64);
-int             waitx(uint64 status, uint64 rtime, uint64 wtime); //added
+int             waitx(uint64 status, uint64 rtime, uint64 wtime, uint64 retime); //added 4th param
 void            wakeup(void*);
 void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
