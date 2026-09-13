@@ -102,16 +102,17 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-  // MLFQ fields
-  int priority;                // Current MLFQ priority queue (0-3)
-  int ticks_used;              // Ticks consumed in current priority time slice
+  // added merese (new) : cuz fields needed ofr mlfq
 
-  // Benchmarking metrics
-  int ctime;                   // Creation time (ticks when created)
-  int rtime;                   // Total running time (ticks spent RUNNING)
-  int wtime;                   // Total waiting time (ticks spent RUNNABLE)
-  int etime;                   // End/Exit time (ticks when exited)
-  int first_run;               // Time when first scheduled to run (-1 if not yet run)
+  int priority;                // priority queue (0-3)
+  int ticks_used;              // ticks cnsumed by current priority time-slice
+
+  // benchmarking metrics
+  int ctime;                   // ticks when creatd (creation time)
+  int rtime;                   // total running time (ticks spent RUNNING)
+  int wtime;                   // total waiting time (ticks spent RUNNABLE)
+  int etime;                   // end/exit time (ticks when exit)
+  int first_run;               // first scheduled to run at wat time (-1 if not yet run)
 };
 
 extern struct proc proc[NPROC];
