@@ -580,6 +580,11 @@ scheduler(void) // the sched functin
         acquire(&bp->lock); // lock proc for boost
         bp->priority = 0; // bump to top priority
         bp->ticks_used = 0; // rst ticks usd
+#ifdef MLFQ_TRACE
+        if (bp->state == RUNNABLE || bp->state == RUNNING) {
+          printk("MLFQ_TRACE: pid=%d,elapsed=%d,queue=0,event=BOOST\n", bp->pid, ticks);
+        }
+#endif
         release(&bp->lock); // let proc go
       } 
     } 

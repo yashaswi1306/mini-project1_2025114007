@@ -105,7 +105,10 @@ usertrap(void)
     if (p->ticks_used >= slice_ticks[p->priority]) {
       p->ticks_used = 0;
       if (p->priority < 3) {
-        p->priority++; //ove proc down one priority level if expired
+        p->priority++; //move proc down one priority level if expired
+#ifdef MLFQ_TRACE
+        printk("MLFQ_TRACE: pid=%d,elapsed=%d,queue=%d,event=DEMOTE\n", p->pid, ticks, p->priority);
+#endif
       }
       yield();
     } else {
