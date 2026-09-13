@@ -1,3 +1,57 @@
+commit 63f028dba75e154d6ef2ebe3de4a712155dabf65
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 22:24:08 2026 +0530
+
+    fin
+
+commit fc0cdfa000fe6b2fc7eb7b816826ad092aad7dad
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 22:04:00 2026 +0530
+
+    response
+
+commit f3d916a33da12d6934a693b89efff5a2f0cacaf4
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 21:54:29 2026 +0530
+
+    added recent mental breakdown to ai-usage.pdf
+
+commit 97b027ce88ea6ab2ed609ec87c1a81c535095090
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 21:44:13 2026 +0530
+
+    report fixed
+
+commit 2831d0b4899f04a09bda4d48f90642e0ecfb24ff
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 21:32:36 2026 +0530
+
+    edited so pid 8 9 10 11 12 seen
+
+commit 5014e37ccaa6efc41ec5b1b1895f2ce6cb44e2b6
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 21:28:49 2026 +0530
+
+    omg finally the graph wrks
+
+commit f4184f4873779cec7f0b55052b2369cb7fecb080
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 20:51:34 2026 +0530
+
+    fix error in printf
+
+commit defb27db166f58fea61b18984b3bf8d3614ec37e
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 18:17:44 2026 +0530
+
+    final done (study for viva left)
+
+commit 589bf3c2d8c1fb1713d763c010168004ef87b11e
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 15:08:40 2026 +0530
+
+    git log
+
 commit e45ff9d09a69532c424e1526c53416bcc00ac37a
 Author: yashaswi1306 <yashaswi130607@gmail.com>
 Date:   Sun Sep 13 15:06:44 2026 +0530
