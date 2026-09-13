@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 df = pd.read_csv("mlfq_timeline_data.csv")
 
 # FILTER: Keep only PIDs 8, 9, 10, 11, and 12
-df = df[df["pid"].isin([8, 9, 10, 11, 12])]
+df = df[df["pid"].isin([8, 9, 11, 12])]
 
 # Ensure START events exist for these processes so lines start cleanly at Q0
 base_events = []

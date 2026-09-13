@@ -79,13 +79,11 @@ schedtest tests how scheduler peforms under
 1. Heavy computational load  
 2. IO bound processes  
 
-pid 5 (orange) : this is the io bound interactie process. It runs only for a sgort period before stopping to yield to wait for input. Since it gives cpu back so frequently and beofre a time slice completes, its priority remains high (0 and 1), as the tick counter us constantly reset to 0.  
+pid 8 and 12 : this is the io bound interactie process. It runs only for a speriod, then completes its execution and calls exit() early in the timeline, which is why its line terminates abruptly. pid 12 still runs till bosst and gets boosted from q1 to q0 and then exits.
 
-pid 4 (blue) : this finishes its allocated ticks and gets down on the q. But the shift from q2 to q3 is at 20 not 13 to simulate a yield for io. So, it sits in q2 for longer, before getting demoted to q3. THis is medium cpu bound.  
+pid 9 and 11 (pink) : these are a heavily cpu bound process, and drops down the priority queue, as it never yields control for sleep or io.  
 
-pid 3 (pink) : this is a heavily cpu bound process, and drops to last priority at 13 secs (1+4+8), as it never yields control for sleep or io.  
-
-boost: the global prioirty boost occurs at every 48 seconds. proc 5 isnt much affected by it, because the use of a priority boost is to make sure cpu bound tasks are not starved for execution time. So, at 48 and 96, all processes are returned to priority 0, which helps prevent starvaion of pid 4 and pid 3.
+boost: the global prioirty boost occurs at every 48 seconds. The use of a priority boost is to make sure cpu bound tasks are not starved for execution time. So, at 96 and 144, all processes are returned to priority 0, which helps prevent starvaion of pid 11.
 
 ## 2.3.3 Comparison Results
 
