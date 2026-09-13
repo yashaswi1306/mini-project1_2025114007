@@ -80,32 +80,32 @@ usertrap(void)
 
   if (killed(p))
     kexit(-1);
-
-  // give up the CPU if this is a timer interrupt.
+//added
+  // give up cpu and ret 2 when timer interrupt
   if (which_dev == 2) {
-    // Increment rtime for current running process & wtime for runnable processes
+    // increment rtime for current running process 
     p->rtime++;
-    for (struct proc *rp = proc; rp < &proc[NPROC]; rp++) {
-      if (rp != p) {
-        acquire(&rp->lock);
+    for (struct proc *rp = proc; rp < &proc[NPROC]; rp++) { //for every proc in table
+      if (rp != p) { //if its not the curr running orocess
+        acquire(&rp->lock); //lock this process before accessing is fields so cpu dsnt kess up proc
         if (rp->state == RUNNABLE) {
-          rp->wtime++;
+          rp->wtime++; //increment wtime for runnale one
         }
-        release(&rp->lock);
+        release(&rp->lock); //release lock
       }
     }
 
 #ifdef SCHEDULER_FIFO
-    // Non-preemptive FIFO: do not yield on timer interrupt
+    // non-preemptive FIFO: do not yield on timer interrupt
 #elif defined(SCHEDULER_MLFQ)
-    static const int slice_ticks[] = {1, 4, 8, 16};
-    p->ticks_used++;
+    static const int slice_ticks[] = {1, 4, 8, 16}; //time slice per priority, given in assignment
+    p->ticks_used++; //increses ticks used by curr proc in curr queue
 
     // Check if time-slice for current queue has expired
     if (p->ticks_used >= slice_ticks[p->priority]) {
       p->ticks_used = 0;
       if (p->priority < 3) {
-        p->priority++;
+        p->priority++; //ove proc down one priority level if expired
       }
       yield();
     } else {

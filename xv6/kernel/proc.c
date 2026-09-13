@@ -146,12 +146,13 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  p->priority = 0;
-  p->ticks_used = 0;
+  //added
+  p->priority = 0; //new proc starts in pq 0
+  p->ticks_used = 0; //no ticks used till now
 
-  acquire(&tickslock);
-  p->ctime = ticks;
-  release(&tickslock);
+  acquire(&tickslock); //lock proc
+  p->ctime = ticks; //store global tiks counter as process creation time
+  release(&tickslock); //release proc
   p->rtime = 0;
   p->wtime = 0;
   p->etime = 0;
@@ -333,6 +334,7 @@ reparent(struct proc *p)
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait().
+
 void
 kexit(int status)
 {
@@ -363,6 +365,10 @@ kexit(int status)
   // Parent might be sleeping in wait().
   wakeup(p->parent);
 
+
+//added 
+
+//get exact timer ticks when process exited so u can calculate the turnaround and stuff
   acquire(&p->lock);
 
   acquire(&tickslock);
@@ -434,60 +440,62 @@ kwait(uint64 addr)
 }
 
 // Extended wait system call: waitx
+//added 
 int
-waitx(uint64 addr, uint64 rtime, uint64 wtime)
+waitx(uint64 addr, uint64 rtime, uint64 wtime) 
 {
-  struct proc *pp;
-  int havekids, pid;
-  struct proc *p = myproc();
+  struct proc *pp; // ptr to loop thru procs
+  int havekids, pid; // flags for kids and thier id
+  struct proc *p = myproc(); // get curnt proc
 
-  acquire(&wait_lock);
+  acquire(&wait_lock); // grab global wait lock
 
-  for (;;) {
-    havekids = 0;
-    for (pp = proc; pp < &proc[NPROC]; pp++) {
-      if (pp->parent == p) {
-        acquire(&pp->lock);
-        havekids = 1;
-        if (pp->state == ZOMBIE) {
-          pid = pp->pid;
-          if (addr != 0 && copyout(p->pagetable, p->sz, addr, (char *)&pp->xstate, sizeof(pp->xstate)) < 0) {
-            release(&pp->lock);
-            release(&wait_lock);
-            return -1;
-          }
-          if (rtime != 0 && copyout(p->pagetable, p->sz, rtime, (char *)&pp->rtime, sizeof(pp->rtime)) < 0) {
-            release(&pp->lock);
-            release(&wait_lock);
-            return -1;
-          }
-          if (wtime != 0 && copyout(p->pagetable, p->sz, wtime, (char *)&pp->wtime, sizeof(pp->wtime)) < 0) {
-            release(&pp->lock);
-            release(&wait_lock);
-            return -1;
-          }
-          pp->parent = 0;
-          freeproc(pp);
-          release(&pp->lock);
-          release(&wait_lock);
-          return pid;
-        }
-        release(&pp->lock);
-      }
-    }
+  for (;;) { 
+    havekids = 0; // reset kids flag
+    for (pp = proc; pp < &proc[NPROC]; pp++) { // check evry proc
+      if (pp->parent == p) { // is proc parent of kid?
+        acquire(&pp->lock); // lock the kid
+        havekids = 1; // have at least one kid
+        if (pp->state == ZOMBIE) { 
+          pid = pp->pid; // if kids a zombie, save id before del
+          if (addr != 0 && copyout(p->pagetable, p->sz, addr, (char *)&pp->xstate, sizeof(pp->xstate)) < 0) { // copy exit stat
+            release(&pp->lock); // drop kid lock on fail
+            release(&wait_lock); // drop global lock
+            return -1; // return error
+          } // end if
+          if (rtime != 0 && copyout(p->pagetable, p->sz, rtime, (char *)&pp->rtime, sizeof(pp->rtime)) < 0) { // copy rtime if asked
+            release(&pp->lock); // drop lock on failure
+            release(&wait_lock); // drop wait lock
+            return -1; // error out
+          } // end if
+          if (wtime != 0 && copyout(p->pagetable, p->sz, wtime, (char *)&pp->wtime, sizeof(pp->wtime)) < 0) { // copy wtime if asked
+            release(&pp->lock); // failure so drop lock
+            release(&wait_lock); // drop wait lock
+            return -1; // error out
+          } 
 
-    if (!havekids || killed(p)) {
-      release(&wait_lock);
-      return -1;
-    }
+          pp->parent = 0; // rmove parent ties
+          freeproc(pp); // free  proc
+          release(&pp->lock); // unlock kid
+          release(&wait_lock); // unlock global lock
+          return pid; // return dead kids id
+        } 
+        release(&pp->lock); // not dead so unlock
+      } 
+    } 
 
-    sleep_prepare(p);
-    release(&wait_lock);
-    sleep();
+    if (!havekids || killed(p)) { // proc has no kids nd isnt killed yet
+      release(&wait_lock); // rem lock
+      return -1; // return error
+    } 
+
+    sleep_prepare(p); // prep for sleep
+    release(&wait_lock); // drop lock nd sleep
+    sleep(); 
     acquire(&wait_lock);
-  }
-}
-
+  } 
+} 
+  
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -495,104 +503,107 @@ waitx(uint64 addr, uint64 rtime, uint64 wtime)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
-#ifdef SCHEDULER_FIFO
+#ifdef SCHEDULER_FIFO //added
 // FIFO scheduler implementation (Non-preemptive, run earliest created process to completion)
 void
-scheduler(void)
-{
-  struct proc *p;
-  struct cpu *c = mycpu();
+scheduler(void) // main sched functin (fifo)
+{ 
+  struct proc *p; // ptr for looping procs
+  struct cpu *c = mycpu(); // get crnt cpu
 
-  c->proc = 0;
-  for (;;) {
-    intr_on();
-    intr_off();
+  c->proc = 0; 
+  for (;;) { 
+    intr_on(); // turn on interupts
+    intr_off(); // disable cuz scheduler needs to first (opens so sys can acknowledge a timer tick or I/O event.)
 
-    struct proc *earliest = 0;
-    for (p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if (p->state == RUNNABLE) {
-        if (earliest == 0 || p->ctime < earliest->ctime) {
-          if (earliest) release(&earliest->lock);
-          earliest = p;
-          continue;
-        }
-      }
-      release(&p->lock);
-    }
+    struct proc *earliest = 0; // track oldst proc
+    for (p = proc; p < &proc[NPROC]; p++) { 
+      acquire(&p->lock); // lock the proc
+      if (p->state == RUNNABLE) { 
+        if (earliest == 0 || p->ctime < earliest->ctime) { // check if oldr
+          if (earliest) release(&earliest->lock); // unlock prev oldst
+          earliest = p; // save new oldst
+          continue; // go to nxt proc
+        } 
+      } 
+      release(&p->lock); // unlock proc
+    } 
 
-    if (earliest) {
-      if (earliest->first_run == -1) {
-        acquire(&tickslock);
-        earliest->first_run = ticks;
-        release(&tickslock);
-      }
-      earliest->state = RUNNING;
-      c->proc = earliest;
-      swtch(&c->context, &earliest->context);
+    if (earliest) { 
+      if (earliest->first_run == -1) { //first time running
+        acquire(&tickslock); // grab time lock
+        earliest->first_run = ticks; // recrod first run time
+        release(&tickslock); 
+      } 
+      earliest->state = RUNNING; // mark as runing
+      c->proc = earliest; // set cpu proc ptr
+      swtch(&c->context, &earliest->context); // ctx switch to it
 
-      mycpu()->intena = 0;
-      c->proc = 0;
+      mycpu()->intena = 0; // disble interupts
+      c->proc = 0; // clear cpu proc again
       release(&earliest->lock);
-    } else {
-      asm volatile("wfi");
+    } else { // if no proc found
+      asm volatile("wfi"); // wait for interupt
     }
-  }
-}
-#elif defined(SCHEDULER_MLFQ)
-// MLFQ scheduler implementation
-static int mlfq_ticks_since_boost = 0;
+  } 
+} 
+
+#elif defined(SCHEDULER_MLFQ) // check if mlfq is scheduler
+// MLFQ scheduler implementation 
+static int mlfq_ticks_since_boost = 0; // track ticks for boost
 
 void
-scheduler(void)
-{
-  struct proc *p;
-  struct cpu *c = mycpu();
+scheduler(void) // the sched functin
+{ 
+  struct proc *p; // ptr for procs
+  struct cpu *c = mycpu(); // get our cpu
 
-  c->proc = 0;
+  c->proc = 0; // no proc yet
   for (;;) {
-    intr_on();
-    intr_off();
+    intr_on(); 
+    intr_off(); 
 
     // Acquire tick lock to safely handle global boosting
-    acquire(&tickslock);
-    // Global priority boost every 48 ticks
-    if (ticks - mlfq_ticks_since_boost >= 48) {
-      mlfq_ticks_since_boost = ticks;
-      for (struct proc *bp = proc; bp < &proc[NPROC]; bp++) {
-        acquire(&bp->lock);
-        bp->priority = 0;
-        bp->ticks_used = 0;
-        release(&bp->lock);
-      }
-    }
-    release(&tickslock);
+    acquire(&tickslock); 
+    // Global priority boost every 48 ticks (given in mp doc)
+    if (ticks - mlfq_ticks_since_boost >= 48) { // time to boost
+      mlfq_ticks_since_boost = ticks; // resest boost timer
+      for (struct proc *bp = proc; bp < &proc[NPROC]; bp++) { 
+        acquire(&bp->lock); // lock proc for boost
+        bp->priority = 0; // bump to top priority
+        bp->ticks_used = 0; // rst ticks usd
+        release(&bp->lock); // let proc go
+      } 
+    } 
 
-    int found = 0;
+    release(&tickslock); // drop tick lock
+
+    int found = 0; // flag if we got one
     // Iterate through priority queues 0 (highest) to 3 (lowest)
-    for (int q = 0; q <= 3; q++) {
-      for (p = proc; p < &proc[NPROC]; p++) {
-        acquire(&p->lock);
-        if (p->state == RUNNABLE && p->priority == q) {
-          p->state = RUNNING;
-          c->proc = p;
-          swtch(&c->context, &p->context);
+    for (int q = 0; q <= 3; q++) { 
+      for (p = proc; p < &proc[NPROC]; p++) { // loop evry proc
+        acquire(&p->lock); // lock it
+        if (p->state == RUNNABLE && p->priority == q) { // is it ready and in this q?
+          p->state = RUNNING; // set runing
+          c->proc = p; // give to cpu
+          swtch(&c->context, &p->context); // jump into it
 
-          mycpu()->intena = 0;
-          c->proc = 0;
-          found = 1;
-        }
-        release(&p->lock);
-        if (found) break;
-      }
-      if (found) break;
-    }
+          mycpu()->intena = 0; // turn off interrupts 
+          c->proc = 0; // clr cpu proc
+          found = 1; // mark as found
+        } 
+        release(&p->lock); // unlock it
+        if (found) break; // exit loop if found
+      } 
+      if (found) break; // exit q loop if found
+    } 
 
-    if (!found) {
-      asm volatile("wfi");
-    }
-  }
-}
+    if (!found) { 
+      asm volatile("wfi"); // wait for interrupts
+    } 
+  } 
+} 
+
 #else
 // Standard Round-Robin Scheduler
 void
@@ -730,18 +741,19 @@ sleep_prepare(void *chan)
 // Put the thread to sleep.  Assumes sleep_prepare() was called before.
 // If the channel registered by sleep_prepare() has been woken up in
 // the meantime, do not go to sleep, and instead return immediately.
+//added
 void
 sleep(void)
 {
-  struct proc *p = myproc();
+  struct proc *p = myproc(); //get curr roc
 
-  acquire(&p->lock);
-  if (p->chan != 0) {
-    p->state = SLEEPING;
+  acquire(&p->lock); //lock before changing
+  if (p->chan != 0) { //if it has sleep channel
+    p->state = SLEEPING; //aek as sleeping
 #ifdef SCHEDULER_MLFQ
-    p->ticks_used = 0;
+    p->ticks_used = 0; //reset ti ks when proc sleeps
 #endif
-    sched();
+    sched(); //switch to scheduler
   }
   release(&p->lock);
 }
@@ -869,6 +881,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
+//added
 #ifdef SCHEDULER_MLFQ
     printk("%d %s %s priority=%d ticks_used=%d\n", p->pid, state, p->name, p->priority, p->ticks_used);
 #else
