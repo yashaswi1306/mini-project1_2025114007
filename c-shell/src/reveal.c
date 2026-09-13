@@ -7,47 +7,50 @@
 #include <limits.h>
 #include "reveal.h"
 
+// fallback path max length
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
+// global variable to track shell's home directory
 char reveal_shell_home[PATH_MAX];
 
+// comparison function for qsort to sort names alphabetically
 int cmp_names(const void *a, const void *b) 
 {
-    return strcmp(*(const char **)a, *(const char **)b); // cmp so that u can do -t for lexographic order
+    return strcmp(*(const char **)a, *(const char **)b); // compare for lexicographical order
 }
 
-//duplicate function tha so removed
-
-void reveal_init(const char *home_dir) // saves a coy of teh home ir into a local variavble
+// save a copy of the home dir into a local variable
+void reveal_init(const char *home_dir) 
 {
     strncpy(reveal_shell_home, home_dir, PATH_MAX - 1);
     reveal_shell_home[PATH_MAX - 1] = '\0';
 }
 
+// resolve target path shortcuts like ., ~, .., or -
 int resolve_target(const char *arg, char *out, size_t outsize) 
 {
     if (arg == NULL || strcmp(arg, ".") == 0) 
     {
-        // if cwd or no args
+        // if cwd or no args specified
         return getcwd(out, outsize) != NULL;
     }
 
     if (strcmp(arg, "~") == 0) 
     {
-        // if ~, then my home dir
+        // if ~, use shell home dir
         snprintf(out, outsize, "%s", reveal_shell_home);
         return 1;
     }
     if (strcmp(arg, "..") == 0) 
     {
         char cwd[PATH_MAX];
-        if (getcwd(cwd, sizeof(cwd)) == NULL) return 0; //gets cwd and stores in cwd, returns null if fails
-        char tmp[PATH_MAX + 4]; //temp path
-        snprintf(tmp, sizeof(tmp), "%s/..", cwd);  // buils currend dir/ path 
-        char *rp = realpath(tmp, NULL); //resolves that path
-        if (rp == NULL) return 0; //retirns 0 if teh real path func doesnt work
+        if (getcwd(cwd, sizeof(cwd)) == NULL) return 0; // get current dir
+        char tmp[PATH_MAX + 4]; // temp path buffer
+        snprintf(tmp, sizeof(tmp), "%s/..", cwd);  // build parent path 
+        char *rp = realpath(tmp, NULL); // resolve actual path
+        if (rp == NULL) return 0; // fail if realpath errors out
         snprintf(out, outsize, "%s", rp);
         free(rp);
 
@@ -55,15 +58,17 @@ int resolve_target(const char *arg, char *out, size_t outsize)
     }
     if (strcmp(arg, "-") == 0) 
     {
-        char *old = getenv("OLDPWD"); //get prev wd
-        if (old == NULL) return 0; // if not present
+        char *old = getenv("OLDPWD"); // get previous working dir
+        if (old == NULL) return 0; // if OLDPWD not set, fail
         snprintf(out, outsize, "%s", old);
         return 1;
     }
-    // absolute path lookup
+
+    // absolute or relative path lookup
     char *rp = realpath(arg, NULL);
     if (rp == NULL) return 0;
-    // hop logic
+
+    // check if it's actually a valid directory
     struct stat st;
     if (stat(rp, &st) != 0 || !S_ISDIR(st.st_mode)) {
         free(rp);
@@ -74,14 +79,13 @@ int resolve_target(const char *arg, char *out, size_t outsize)
     return 1;
 }
 
-
-void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int flag_t)
+// read directory and list contents (with support for -a and -t recursive tree flags)
+void reveal_list_dir(const char *dir_path, const char *prefix, int flag_a, int flag_t)
 {
-    DIR *d = opendir(dir_path); // open dir path
+    DIR *d = opendir(dir_path); // open target directory stream
     if (d == NULL) return;
 
-
-    size_t cap = 64, count = 0; // item names in dir names
+    size_t cap = 64, count = 0; // track dynamic array capacity and item count
     char **names = malloc(sizeof(char *) * cap);
     if (names == NULL) 
     { 
@@ -93,12 +97,13 @@ void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int fl
     while ((ent = readdir(d)) != NULL) 
     {
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
-            continue;
-        if (!flag_a && ent->d_name[0] == '.') // if flag not -a and the file isnt a hidden file, ignore
-            continue;
+            continue; // skip current and parent dir markers
+        if (!flag_a && ent->d_name[0] == '.') 
+            continue; // if -a flag is off, ignore hidden files
+        
         if (count == cap) 
         {
-            cap *= 2; // if the count= capacity, realloc
+            cap *= 2; // double capacity if array is full
             char **tmp = realloc(names, sizeof(char *) * cap);
             if (tmp == NULL) break;
             names = tmp;
@@ -107,10 +112,10 @@ void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int fl
     }
     closedir(d);
 
-    // sort acc to lexigraphical order
+    // sort names alphabetically
     qsort(names, count, sizeof(char *), cmp_names);
 
-    // print and recures through files
+    // print files and recursively traverse directories if flag_t is set
     for (size_t i = 0; i < count; i++) {
         char full[PATH_MAX];
         snprintf(full, sizeof(full), "%s/%s", dir_path, names[i]);
@@ -120,7 +125,7 @@ void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int fl
 
         if (flag_t) 
         {
-            // if -t i teh flag
+            // if -t flag is enabled (tree style print)
             if (is_dir)
                 printf("%s%s/\n", prefix, names[i]);
             else
@@ -128,14 +133,13 @@ void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int fl
 
             if (is_dir) {
                 char new_prefix[PATH_MAX];
-                snprintf(new_prefix, sizeof(new_prefix), "%s%s/",
-                         prefix, names[i]);
-                reveal_list_dir(full, new_prefix, flag_a, flag_t);
+                snprintf(new_prefix, sizeof(new_prefix), "%s%s/", prefix, names[i]);
+                reveal_list_dir(full, new_prefix, flag_a, flag_t); // recurse into subdirectory
             }
         } 
         else 
         {
-            // if no flag, jst print in ls style
+            // standard ls-style print
             printf("%s\n", names[i]);
         }
 
@@ -144,39 +148,39 @@ void reveal_list_dir(const char *dir_path, const char *prefix,int flag_a, int fl
     free(names);
 }
 
-
+// main entrypoint for the reveal command
 void reveal(const token_list_t *list) 
 {
-    int flag_a = 0, flag_t = 0; // right now, both flags are 0
+    int flag_a = 0, flag_t = 0; // start with both flags turned off
     const char *target = NULL;
 
-    // parse flags and the path argument
+    // parse command flags and path argument from tokens
     for (size_t i = 1; i < list->count; i++) 
     {
         if (list->tokens[i].type != OP_WORD) continue; 
         const char *arg = list->tokens[i].text;
 
-        // resolve flags
+        // check if token is a flag
         if (arg[0] == '-' && arg[1] != '\0') 
         {
             for (int j = 1; arg[j] != '\0'; j++) 
             {
                 if (arg[j] == 'a')
                 {
-                    flag_a = 1; // flag a
+                    flag_a = 1; // enable hidden files flag
                 }
                 else if (arg[j] == 't') 
                 {
-                    flag_t = 1; // flag t
+                    flag_t = 1; // enable recursive tree view flag
                 }
                 else 
                 {
-                    printf("reveal: invalid syntax\n"); //wrong flags
+                    printf("reveal: invalid syntax\n"); // bad flag error
                     return;
                 }
             }
         } else {
-            // only one ath arg allowed
+            // only allow one path argument
             if (target != NULL) {
                 printf("reveal: invalid syntax\n");
                 return;
@@ -185,20 +189,20 @@ void reveal(const token_list_t *list)
         }
     }
 
-    // reslve target directory
+    // resolve target directory path
     char resolved[PATH_MAX];
     if (!resolve_target(target, resolved, sizeof(resolved))) {
         printf("reveal: no such directory\n");
         return;
     }
 
+    // verify path exists and is a directory
     struct stat st;
     if (stat(resolved, &st) != 0 || !S_ISDIR(st.st_mode)) 
     {
-        printf("reveal: no such directory\n"); //no such dir
+        printf("reveal: no such directory\n"); 
         return;
     }
 
-    reveal_list_dir(resolved, "", flag_a, flag_t); // call reveal for that dir
+    reveal_list_dir(resolved, "", flag_a, flag_t); // trigger directory listing
 }
-

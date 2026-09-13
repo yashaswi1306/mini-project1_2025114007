@@ -30,19 +30,19 @@ void save_history() {
     FILE *fp = fopen(history_path, "w");
     if (fp == NULL) 
     {
-        return;               
+        return; // cant open, just bail               
     }
     for (int i = 0; i < db_count; i++)
     {
-        fprintf(fp, "%d %ld %s\n",db[i].frequency, db[i].last_access, db[i].path);
+        fprintf(fp, "%d %ld %s\n",db[i].frequency, db[i].last_access, db[i].path); // dump stats to file
     }
-    fclose(fp);
+    fclose(fp); // close file
 }
 
 void load_history() {
     FILE *fp = fopen(history_path, "r");
     if (fp == NULL) {
-        return;
+        return; // no history file yet
     }
     db_count = 0;
     char line[PATH_MAX + 128];
@@ -63,7 +63,7 @@ void load_history() {
             size_t len_p = strlen(p);
             while (len_p > 0 && (p[len_p - 1] == '\n' || p[len_p - 1] == '\r')) {
                 p[len_p - 1] = '\0'; 
-                len_p--;
+                len_p--; // strip newline
             }
 
             if (len_p > 0) {
@@ -71,11 +71,11 @@ void load_history() {
                 db[db_count].last_access = last_acc;
                 strncpy(db[db_count].path, p, PATH_MAX - 1);
                 db[db_count].path[PATH_MAX - 1] = '\0';
-                db_count++;
+                db_count++; // store in db array
             }
         }
     }
-    fclose(fp);
+    fclose(fp); // close file stream
 }
 
 //scoring ,ethid. Based on frequency, if no frequency, then last access // THIS IS NOT FRECENCY CHANGE IT
@@ -95,7 +95,7 @@ int score(const frecency_entry_t *e)
     }
     else if (t_d<604800) 
     {
-        weight = 100;
+        weight = 100; // within last week
     }
     else
     {
@@ -138,13 +138,13 @@ void update_frecency(const char *abs_path) {
             if (s<min_sc) 
             {
                 min_sc =s;
-                min_idx = i;
+                min_idx = i; // track lowest score
             }
         }
         strncpy(db[min_idx].path, abs_path, PATH_MAX-1);
         db[min_idx].path[PATH_MAX-1] = '\0';
         db[min_idx].frequency = 1;
-        db[min_idx].last_access = (long)time(NULL);
+        db[min_idx].last_access = (long)time(NULL); // replace lowest entry
     }
     save_history(); //save to file
 }
@@ -162,7 +162,7 @@ const char *frecency_lookup(const char *name)
             {
                 int k= order[i];
                 order[i] = order[j];
-                order[j] = k;
+                order[j] = k; // swap indexes
             }
         }
     }
@@ -170,14 +170,14 @@ const char *frecency_lookup(const char *name)
     for (int i = 0; i < db_count; i++) 
     {
         int idx = order[i];
-        if (strstr(db[idx].path, name) != NULL) {
+        if (strstr(db[idx].path, name) != NULL) { // check if substring matches
             struct stat st;
             if (stat(db[idx].path, &st) == 0 && S_ISDIR(st.st_mode)) {
-                return db[idx].path;
+                return db[idx].path; // found valid dir match
             }
         }
     }
-    return NULL;
+    return NULL; // nothing matched
 }
 
 //code to hop to target . THen it make s the OLDPWD into ur CWD 
@@ -199,7 +199,7 @@ int do_chdir(const char *target)
     char landed[PATH_MAX];
     if (getcwd(landed, sizeof(landed)) != NULL) 
     {
-        update_frecency(landed);
+        update_frecency(landed); // update frecency stats
     }
 
     if (prev[0] != '\0') 
@@ -238,7 +238,7 @@ void hop_init(const char *home_dir)
         snprintf(history_path, sizeof(history_path), "%s/hop_hist", home_dir); //load old  hist cuz readlink didnt work
     }
 
-    load_history();
+    load_history(); // load saved history db
 }
 
 void hop(const token_list_t *list) {
