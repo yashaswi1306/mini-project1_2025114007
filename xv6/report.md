@@ -88,3 +88,15 @@ pid 3 (pink) : this is a heavily cpu bound process, and drops to last priority a
 boost: the global prioirty boost occurs at every 48 seconds. proc 5 isnt much affected by it, because the use of a priority boost is to make sure cpu bound tasks are not starved for execution time. So, at 48 and 96, all processes are returned to priority 0, which helps prevent starvaion of pid 4 and pid 3.
 
 ## 2.3.3 Comparison Results
+
+| Scheduler policy | Avg Turnaround TIme (ticks) | Avg waiting time (ticks) | Avg response time (ticks)|
+| --- | --- | --- | --- | 
+| FIFO | 8 | 4 | 0 | 
+| MLFQ | 4 | 0 | 0 |
+| RR | 4 | 0 | 0 |
+
+FIFO has the highest turnaround time and the highest wait time.  
+THis is beacause FIFO is NON preemptive, meaning that quick tasks get stuck behind longer ones.  
+RR has its wait time depend upon quantam size.  
+So if quantam is small, theres a ton of context switching. Else, it behaves as a FFO system.  
+MLFQ has least waiting time as it keeps io bound tasks at high priority and cpu bound ones at lower probability.

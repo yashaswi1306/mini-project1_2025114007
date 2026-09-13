@@ -48,17 +48,17 @@ int main(int argc, char *argv[]) {
     total_rtime += r; // add run to totl
     total_wtime += w; // add wait to totl
     total_ttime += turnaround; // add turn to totl
-    total_restime += res; // NEW: add response time to totl
+    total_restime += res; //  add response time to totl
 
     printf("Process PID %d: RunTime = %d, WaitTime = %d, TurnaroundTime = %d, ResponseTime = %d\n", 
-           pid, r, w, turnaround, res); // NEW: print res
+           pid, r, w, turnaround, res); //print res
   }
 
   printf("\nSummary Statistics\n");
   printf("Average Running Time: %d ticks\n", total_rtime / NPROCS); // avg run time (fixed string)
   printf("Average Waiting Time: %d ticks\n", total_wtime / NPROCS); // avg wait time
   printf("Average Turnaround Time: %d ticks\n", total_ttime / NPROCS); // avg turnaroud
-  printf("Average Response Time: %d ticks\n", total_restime / NPROCS); // NEW: avg response time
+  printf("Average Response Time: %d ticks\n", total_restime / NPROCS); //avg response time
 
   exit(0); 
 }
