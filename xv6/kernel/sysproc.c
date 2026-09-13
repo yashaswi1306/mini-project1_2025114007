@@ -36,7 +36,7 @@ sys_wait(void)
   return kwait(p);
 }
 
-uint64
+uint64 //addedd
 sys_waitx(void)
 {
   uint64 p, rtime, wtime;
