@@ -45,7 +45,7 @@ Q2 : 8 tick
 Q3 : 16 tick
 ```
 
-if ticks used reached queue limit, priority increased by 1 (demoted)  
+if ticks used reached queue limit (1,4,8,16), priority increased by 1 (demoted)  
 
 6. voluntary yield handling  
 
@@ -70,4 +70,12 @@ Trigerred via ctrl p. THis is because debugging support said to print
 PID, name, state, current priority/queue number, and any other bookkeeping data relevant to verifying scheduler correctness (e.g. ticks consumed in current slice, ticks since last boost)
 ```
 
-for each process.
+for each process.  
+
+## 2.3.2 MLFQ Analysis  
+
+schedtest tests how scheduler peforms under  
+
+1. Heavy computational load  
+2. IO bound processes  
+
