@@ -108,35 +108,37 @@ int main(void)
     hop_init(home_dir);
     reveal_init(home_dir);
     jobs_init();
-struct sigaction sa_int;
+    
+    struct sigaction sa_int;
     memset(&sa_int, 0, sizeof(sa_int));
     sa_int.sa_handler = sigint_handler;
-    sigemptyset(&sa_int.sa_mask);
+    sigemptyset(&sa_int.sa_mask); //ensures nothing (signal) blocked when handler runs
     sa_int.sa_flags = 0;
-    sigaction(SIGINT, &sa_int, NULL);
+    sigaction(SIGINT, &sa_int, NULL); //so ctrl c dsnt kill shell
 
     struct sigaction sa_tstp;
     memset(&sa_tstp, 0, sizeof(sa_tstp));
     sa_tstp.sa_handler = sigtstp_handler;
     sigemptyset(&sa_tstp.sa_mask);
     sa_tstp.sa_flags = 0;
-    sigaction(SIGTSTP, &sa_tstp, NULL);
+    sigaction(SIGTSTP, &sa_tstp, NULL); //so ctrl z dsnt freexe shit
 
+    //when shell launches a foreground process, the shell must temporarily move itself into the background
     signal(SIGTTOU, SIG_IGN);
-    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN); //allows shell to regain conrol 
 
-    int eof_warned = 0;
+    int eof_warned = 0; //has user been warned about bg jobs when tryna exit
 
     while (1) {
-        if (accum_line[0] == '\0') 
+        if (accum_line[0] == '\0') //shell ready for brand new command, not continuing a typed one
         {
-            jobs_check_completed();
+            jobs_check_completed(); //clean bg jobs taht were fin
             print_prompt();
         }
 
         if (fgets(line, sizeof(line), stdin) == NULL) 
         {
-            if (errno == EINTR) 
+            if (errno == EINTR) //was failure to read from shell due to a signal interrupt
             {
                 if (prompt_interrupted) 
                 {
@@ -148,7 +150,7 @@ struct sigaction sa_int;
                 continue;
             }
 
-            if (accum_line[0] != '\0') 
+            if (accum_line[0] != '\0') //ctrl d but half wirteen line
             {
                 if (!isatty(STDIN_FILENO) && feof(stdin)) 
                 {
