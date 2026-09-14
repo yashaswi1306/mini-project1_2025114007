@@ -38,7 +38,7 @@ void resume_cmd(const token_list_t *list)
         return;
     }
 
-    int job_id=atoi(target+1); //str to int 
+    int job_id=atoi(target+1); //str to int  (+1 to skip %)
 
     const char *mode=list->tokens[2].text; //get rewuested resume mode (bg or fg)
     
