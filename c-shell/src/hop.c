@@ -30,7 +30,7 @@ void save_history() {
     FILE *fp = fopen(history_path, "w");
     if (fp == NULL) 
     {
-        return; // cant open, just bail               
+        return; // cant open             
     }
     for (int i = 0; i < db_count; i++)
     {
@@ -158,7 +158,7 @@ const char *frecency_lookup(const char *name)
    //sort teh db array to rank the higher rank one on top
     for (int i = 0; i < db_count - 1; i++) {
         for (int j = i + 1; j < db_count; j++) {
-            if (score(&db[order[j]]) > score(&db[order[i]]))
+            if (score(&db[order[j]]) > score(&db[order[i]])) //WTF IS THIS! ARE U ACTUALLY DOING BUBBLE SORT WITHOUT A FLAG OMG YASHU :() but im not gonna change it cuz wat if smthng breaks
             {
                 int k= order[i];
                 order[i] = order[j];
@@ -216,7 +216,7 @@ void hop_init(const char *home_dir)
     hop_shell_home[PATH_MAX - 1] = '\0'; //save that path in the global variable plus null terminator
 
     char exe_path[PATH_MAX];
-    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1); //find path of currentloy running executable
+    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1); //find path of currentloy running executable (so shell can get its absolute ath)
     if (len > 0)  //if readlink worked
     {
         exe_path[len] = '\0';
@@ -227,7 +227,7 @@ void hop_init(const char *home_dir)
             *last_slash = '\0';
             strncpy(history_path, exe_path, PATH_MAX - 15); //cpies executable into history path
             history_path[PATH_MAX - 15] = '\0';
-            strcat(history_path, "/hop_hist");  
+            strcat(history_path, "/hop_hist");  //scans ulta to get last slash
         } 
         else 
         {
@@ -304,7 +304,7 @@ void hop(const token_list_t *list) {
             }
         }
 
-        // frecency lookup
+        // frecency lookup shell assumes the user typed a shorthand alias or a substring of a frequently visited director
         {
             const char *match = frecency_lookup(arg);
             if (match != NULL) {
