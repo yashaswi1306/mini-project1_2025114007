@@ -7,29 +7,29 @@
 #include "locate.h"
 
 #ifndef PATH_MAX
-#define PATH_MAX 4096
+#define PATH_MAX 4096 //standard for most unix systems
 #endif
 
 //use same functoion as execute.c
 int locate_is_executable(const char *filepath) 
 {
     struct stat st;
-    if (access(filepath, X_OK) != 0) return 0;
-    if (stat(filepath, &st) != 0) return 0;
-    if (S_ISDIR(st.st_mode)) return 0;
+    if (access(filepath, X_OK) != 0) return 0; //check file exists and has exec perms (if not ret 0)
+    if (stat(filepath, &st) != 0) return 0; //fetch file data into struct holding metadata 
+    if (S_ISDIR(st.st_mode)) return 0; //ret 0 if its a dir
     return 1;
 }
 
 //ai written part 
 void locate_single(const char *cmd) 
 {
-    int matches = 0; //number of exec files matched
+    int matches = 0; //number of exec files matched (valid paths kitte hai)
     char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd)) != NULL)  //get cwd 
+    if (getcwd(cwd, sizeof(cwd)) != NULL)  //get cwd (ka absolute path)
     {
         char cwd_candidate[PATH_MAX+512]; //dekh liyo ye ek baar (lol thsi only was the issue)
 
-        snprintf(cwd_candidate, sizeof(cwd_candidate), "%s/%s", cwd, cmd);
+        snprintf(cwd_candidate, sizeof(cwd_candidate), "%s/%s", cwd, cmd); //cwd/file path
 
         if (locate_is_executable(cwd_candidate))  //if its an eecutable file, increase teh nber of matches
         {
@@ -42,25 +42,25 @@ void locate_single(const char *cmd)
 
     if (env_path != NULL && strlen(env_path) > 0) 
     {
-        char *path_copy = strdup(env_path);
+        char *path_copy = strdup(env_path); //copy cuz tokenizer modifies strings when reading
         if (path_copy != NULL) {
             char *saveptr = NULL;
-            char *dir = strtok_r(path_copy, ":", &saveptr);
+            char *dir = strtok_r(path_copy, ":", &saveptr); //isolates folder dir one by one in char*dir
             while (dir != NULL) {
                 char candidate[PATH_MAX + 512];
                 if (strlen(dir) == 0) {
-                    snprintf(candidate, sizeof(candidate), "%s/%s", cwd, cmd);
+                    snprintf(candidate, sizeof(candidate), "%s/%s", cwd, cmd); //cwd/cmd
                 } else if (dir[0] == '/') {
-                    snprintf(candidate, sizeof(candidate), "%s/%s", dir, cmd);
+                    snprintf(candidate, sizeof(candidate), "%s/%s", dir, cmd); //since if starts from /, its abslute path so dir/cmd
                 } else {
-                    snprintf(candidate, sizeof(candidate), "%s/%s/%s", cwd, dir, cmd);
+                    snprintf(candidate, sizeof(candidate), "%s/%s/%s", cwd, dir, cmd); //else rel path so cwd/dir/cmd
                 }
 
                 if (locate_is_executable(candidate)) {
                     printf("%s\n", candidate);
                     matches++;
                 }
-                dir = strtok_r(NULL, ":", &saveptr);
+                dir = strtok_r(NULL, ":", &saveptr); //how str_tok wrks only
             }
             free(path_copy);
         }
