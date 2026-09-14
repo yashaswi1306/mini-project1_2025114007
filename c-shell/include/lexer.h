@@ -15,7 +15,7 @@ typedef enum {
 
 typedef struct {
     token_category type;
-    char *text; //used char* instead of char tyoe[len] as thsi is better for dynamic mem alloc
+    char *text; //used char* instead of char tyoe[len] as thsi is better for dynamic mem alloc cuz for that len wld have to be constant
 }token_t;
 
 typedef struct {
