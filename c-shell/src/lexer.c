@@ -50,8 +50,8 @@ static void tv_push(token_vec_t *v, token_category type, char *text) {
     }
 
     //store new value after old array ended , so after its len (count)
-    v->items[v->count].type = type; 
-    v->items[v->count].text = text;
+    v->items[v->count].type = type; //store type of token 
+    v->items[v->count].text = text; //store actual token
     v->count++;
 }
 
@@ -61,10 +61,10 @@ static void tv_free_contents(token_vec_t *v)
     {
         free(v->items[i].text); //free individual tokens
     }
-    free(v->items); //free artay
+    free(v->items); //free array
 }
 
-//use growable char buffer instead of array to bild word (again my code modified by ai to change it from arr)
+//use growable char buffer instead of array to build word (again my code modified by ai to change it from arr)
 typedef struct {
     char *data; //pointer to array
     int len; //len of char array
@@ -124,7 +124,7 @@ static char *lex_word(const char *line, size_t len, size_t *pos, int *error)
                 free(word.data);
                 return NULL;
             }
-            // otherwise ignore the /.
+            // otherwise ignore the slash.
             word_push(&word, line[*pos + 1]);
             *pos += 2;
             continue;
@@ -145,7 +145,7 @@ static char *lex_word(const char *line, size_t len, size_t *pos, int *error)
                 if (dc == '\\') 
                 {
                     if (*pos + 1 >= len) 
-                    { // again if ended with /
+                    { // again if ended with slash
                         *error = 1;
                         free(word.data);
                         return NULL;
@@ -159,7 +159,7 @@ static char *lex_word(const char *line, size_t len, size_t *pos, int *error)
                     } 
                     else 
                     {
-                        word_push(&word, '\\'); // keep the / for chars like /n, /t etc.
+                        word_push(&word, '\\'); // keep the slash for newline, tab wtc.
                         word_push(&word, nc);
                     }
                     *pos += 2;
@@ -283,7 +283,7 @@ token_list_t *lex_line(const char *line, int *error) //lexer for one inpput line
         tv_push(&vec, OP_WORD, text); 
     }
 
-    token_list_t *list = malloc(sizeof(token_list_t)); //turn token_vec into the token_list
+    token_list_t *list = malloc(sizeof(token_list_t)); //turn token_vec into the token_list for cleaner execution
     
     if (list == NULL) 
     {
