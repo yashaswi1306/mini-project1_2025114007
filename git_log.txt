@@ -1,3 +1,93 @@
+commit de7bba84d507af27907b3f94834f8ede9731ac93
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Tue Sep 15 01:31:16 2026 +0530
+
+    execute study (redo once)
+
+commit 57bc87ffdf90dfcfeafd6ceab0757235cb10d362
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Tue Sep 15 00:35:39 2026 +0530
+
+    study jobs (redo this pls)
+
+commit f2ba6ec5e6a694ad69970f93d7927aee5b8acd61
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 23:03:39 2026 +0530
+
+    main study (redo)
+
+commit 69fec3762ccbb5550d79c8f0b37eda1874aab518
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 22:40:37 2026 +0530
+
+    hop study
+
+commit 45cf12745654fc4b2b2032b3b7773a5a1e57da51
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 22:18:40 2026 +0530
+
+    peek study
+
+commit d81dd59cbd607cf5c22354f5fb4a53e2af33b452
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 22:03:48 2026 +0530
+
+    snoop study
+
+commit bdd2e1519a764331c97ed1e08bf39f97a87c5ad0
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 21:38:55 2026 +0530
+
+    study spy.c (redo this , im confused in teh resolution part
+
+commit ee6c6f1bfedd67e310c44f1ade6e03b09cd7b6dd
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 19:32:32 2026 +0530
+
+    hopped when testing
+
+commit 9f5026b52c94063a7b8738d5c5bdf19be10ac16a
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 19:22:06 2026 +0530
+
+    study resume
+
+commit 5a117e78e7e10e0d225c1b52c0d1ba01dd615506
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 19:16:57 2026 +0530
+
+    study reveal
+
+commit 6fa73582d16ca92ea3816b9689bc549dced2d276
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 18:22:20 2026 +0530
+
+    locate study
+
+commit 96dc39c26ef48553bec4cacc455d0013e0d96555
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 18:05:41 2026 +0530
+
+    lexer fin (i hope :()
+
+commit bd3001475c0a009d9dff96dd46209f167b7c05eb
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 18:02:54 2026 +0530
+
+    study lexer.h
+
+commit b2f32b18c074ec45fbab421ec332547f1e291150
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Mon Sep 14 17:43:22 2026 +0530
+
+    parser study
+
+commit fe1cf65ef7f5a58e9fee8007e796262c6fc57b34
+Author: yashaswi1306 <yashaswi130607@gmail.com>
+Date:   Sun Sep 13 22:25:54 2026 +0530
+
+    git log
+
 commit 63f028dba75e154d6ef2ebe3de4a712155dabf65
 Author: yashaswi1306 <yashaswi130607@gmail.com>
 Date:   Sun Sep 13 22:24:08 2026 +0530
