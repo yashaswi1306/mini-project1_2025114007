@@ -70,7 +70,7 @@ static int CMD(parser_t *p)
         return 0; //check if cmdgoes to word or not
     }
     p->pos++;
-    return ARG(p); //after word parsed, it has to parse arg next
+    return ARG(p); //after word parsed, it has to parse arg next. So eg if we have ls -l, then ls i op_word. THen parser has to make sure -l is arg
 }
 
 static int TGT(parser_t *p) 
@@ -139,6 +139,6 @@ static int LINE(parser_t *p)
 }
 
 int parse_tokens(const token_list_t *list) {
-    parser_t p = { .toks = list->tokens, .n = list->count, .pos = 0 };
+    parser_t p = { .toks = list->tokens, .n = list->count, .pos = 0 }; //p.pos=0, p.n=list->count, p.toks=list->tokens
     return LINE(&p);
 }
