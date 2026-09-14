@@ -40,7 +40,7 @@ static int is_non_negative_int(const char *str) //is pid a digit
 
 static const char *get_file_type(const char *path,const char *link_target) // get file type of a path
 {
-    struct stat st;
+    struct stat st; //stores file metadata
     if (lstat(path,&st)==0) //does file path use lstat
     {
         if (S_ISDIR(st.st_mode)) return "DIR"; //dir
@@ -67,11 +67,11 @@ static const char *get_file_type(const char *path,const char *link_target) // ge
 
     if (link_target) //dtring matching as fallback (for pseudo files and pipes)
     {
-        if (strncmp(link_target,"/dev/pts/",9)==0||strncmp(link_target,"/dev/tty", 8)==0) 
+        if (strncmp(link_target,"/dev/pts/",9)==0||strncmp(link_target,"/dev/tty", 8)==0)  //check for terminal devices
         {
-            return "CHR";
+            return "CHR"; //terminal devices are char devices
         }
-        if (strncmp(link_target,"pipe:",5)==0||strncmp(link_target,"anon_inode",10)==0) 
+        if (strncmp(link_target,"pipe:",5)==0||strncmp(link_target,"anon_inode",10)==0) //chec for inodes
         {
             return "FIFO";
         }
@@ -86,7 +86,7 @@ static const char *get_file_type(const char *path,const char *link_target) // ge
 
 void spy_cmd(const token_list_t *list) 
 {
-    pid_t target_pid=getpid(); //curr process id
+    pid_t target_pid=getpid(); //curr process id(spy examines c urr shell proj by default)
 
     if (list->count>2) // at most 1 arg accepted
     {
@@ -105,9 +105,9 @@ void spy_cmd(const token_list_t *list)
         target_pid = (pid_t)atoi(pid_str);
     }
 
-    char proc_path[256]; //does target process exist in /proc
-    snprintf(proc_path, sizeof(proc_path),"/proc/%d",(int)target_pid);
-    if (access(proc_path,F_OK) != 0) 
+    char proc_path[256]; //does target process exist in /proc (buffer stores /proc/<pid> path)
+    snprintf(proc_path, sizeof(proc_path),"/proc/%d",(int)target_pid); //construct target process path
+    if (access(proc_path,F_OK) != 0)  //does proc dir for this exist
     {
         printf("spy: no such process\n");
         return;
@@ -130,7 +130,7 @@ void spy_cmd(const token_list_t *list)
     }
 
     //executable file
-    char exe_link[256],exe_target[512];
+    char exe_link[256],exe_target[512]; //buffer for proc/exec link and exec path
     snprintf(exe_link, sizeof(exe_link),"/proc/%d/exe",(int)target_pid);
     len=readlink(exe_link, exe_target, sizeof(exe_target) - 1);
     if (len>0) 
@@ -141,7 +141,7 @@ void spy_cmd(const token_list_t *list)
     }
 
     //mem mappedfiles
-    char maps_path[256];
+    char maps_path[256]; //buffer for storing /proc/pud/maps
     snprintf(maps_path, sizeof(maps_path),"/proc/%d/maps",(int)target_pid);
     FILE *mf=fopen(maps_path, "r"); //open maps file
     if (mf) //opens successfully
@@ -150,12 +150,12 @@ void spy_cmd(const token_list_t *list)
         int seen_count=0; //seen stores paths already encountred
 
         char line[1024];
-        while (fgets(line,sizeof(line),mf)) // read file line by ine
+        while (fgets(line,sizeof(line),mf)) // read file line by line
         {
-            char *slash=strchr(line,'/'); //find first / in line
-            if (slash) 
+            char *slash=strchr(line,'/'); //find first / in line cuz mapped files usually start there
+            if (slash) //iff slash/path ws found
             {
-                size_t path_len=strlen(slash);
+                size_t path_len=strlen(slash); //lne pathbeginning at slash
                 if (path_len>0&&slash[path_len-1]=='\n')  //remove newline cuz fgets add it
                 {
                     slash[path_len-1] = '\0';
@@ -183,12 +183,12 @@ void spy_cmd(const token_list_t *list)
                 }
             }
         }
-        fclose(mf);
+        fclose(mf); //close proc/pid/maps file
     }
 
     //numeric file descriptors
     char fd_dir_path[256];
-    snprintf(fd_dir_path, sizeof(fd_dir_path), "/proc/%d/fd", (int)target_pid);
+    snprintf(fd_dir_path, sizeof(fd_dir_path), "/proc/%d/fd", (int)target_pid); //construct fd path (proc/pid/fd)
     DIR *dir=opendir(fd_dir_path); //open the fddir containing the processes open 
     if(dir) 
     {
@@ -202,7 +202,7 @@ void spy_cmd(const token_list_t *list)
             {
                 if (fd_count<512) 
                 {
-                    fd_names[fd_count++]=strdup(entry->d_name); //store nam eif spave in array
+                    fd_names[fd_count++]=strdup(entry->d_name); //store name if spave in array
                 }
             }
         }
