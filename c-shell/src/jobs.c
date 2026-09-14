@@ -14,7 +14,7 @@
 
 static job_entry_t jobs_list[MAX_BG_JOBS]; //store bg jobs
 static int next_job_id=1; //next job number
-static volatile sig_atomic_t fg_active=0; //is fg job active or not
+static volatile sig_atomic_t fg_active=0; //is fg job active or not (is it blocking the shell)
 
 
 int jobs_alloc_id(void) 
@@ -25,10 +25,10 @@ int jobs_alloc_id(void)
 static void sigchld_handler(int sig) 
 {
     (void)sig;
-    int saved_errno=errno; //save err cuz handler ,ay change it
+    int saved_errno=errno; //save err cuz handler may change it
     int status;
 
-    for (int i=0; i<MAX_BG_JOBS; i++) 
+    for (int i=0; i<MAX_BG_JOBS; i++) //ignores SIGTTOU and SIGTTIN, so if shell tries to write to the terminal while running a process in the background, the Linux kernel would freeze the shell.
     {
         if (jobs_list[i].active&&!jobs_list[i].finished) //active unfinised jobs to run
         {
