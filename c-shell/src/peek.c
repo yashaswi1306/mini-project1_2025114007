@@ -8,7 +8,7 @@
 
 #define CHUNK 4096
 
-typedef struct{
+typedef struct{ //needed when reading from stdin or readng flags
     char **items;
     size_t count;
     size_t cap;
@@ -87,11 +87,11 @@ void read_lines_backward(int fd, lines_t *la)
 
         if((off_t)CHUNK<pos)
         {
-            toread=CHUNK; // if more than chunk bytes remain, read those
+            toread=CHUNK; // if more than chunk bytes remain, read chunk
         }
         else
         {
-            toread=(ssize_t)pos; //else jst read the chunk bytes
+            toread=(ssize_t)pos; //else jst read the leftove
         }
 
         pos -= toread; //pointer shld move that many bytes back. So if its 4 bytes in like 100, the pointer shld move back so it can read 97 98 99 100 whilst forwrs (since lines reversed NOT chunks)
@@ -164,7 +164,7 @@ int process_source(const char *filename, int r_flag, int n_flag,int *running_num
     int use_stdin =0;
     if (filename==NULL||strcmp(filename, "-")==0)
     {
-        use_stdin=1;
+        use_stdin=1; //read from terminal
     }
 
     if (!use_stdin) 
@@ -321,7 +321,7 @@ int process_source(const char *filename, int r_flag, int n_flag,int *running_num
             }
             else 
             {
-                printf("%d %s\n", nums[idx], la.items[idx]);
+                printf("%d %s\n", nums[idx], la.items[idx]); //forwad pass, rev printing
             }
         }
         free(nums);
@@ -418,5 +418,3 @@ void peek(const token_list_t *list)
         }
     }
 }
-
-
