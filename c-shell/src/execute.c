@@ -27,12 +27,12 @@
 typedef struct{
     token_t *tokens;
     size_t count;
-}stage_t;
+}stage_t; //so u can break the piped command into stages
 
 typedef struct{
     char *path;
     int is_append;
-}output_redir_t;
+}output_redir_t; //for utput redorection
 
 int execute_is_executable(const char *filepath) {
     struct stat st;
@@ -70,13 +70,13 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
         group_count++;
     }
 
-    for (size_t i=0; i<group_count; i++) 
+    for (size_t i=0; i<group_count; i++) //only read till group count
     {
         if (list->tokens[i].type == OP_LT) //so if < somewhere(input redir)
         {
             if (i+1<group_count&&list->tokens[i+1].type==OP_WORD) 
             { 
-                // must be followed by a <
+                // < must be followed by a filename
                 input_files[num_inputs++]=list->tokens[i+1].text;
                 i++; // since filename already processed, skip it
             } 
@@ -117,7 +117,7 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
         } 
         else if (list->tokens[i].type==OP_WORD&&argc<255) 
         {
-            argv[argc++]=list->tokens[i].text; // so argv has stuff like cat, echo, file.txt etc.
+            argv[argc++]=list->tokens[i].text; // so argv has stuff like cat, echo etc.
         }
     }
 
@@ -147,15 +147,15 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
         int mid;
         if (output_files[i].is_append) 
         {
-            mid=O_APPEND;
+            mid=O_APPEND; //>>
         } 
         else 
         {
-            mid=O_TRUNC;
+            mid=O_TRUNC; //>
         }
-        int flags=O_WRONLY|O_CREAT|mid;
+        int flags=O_WRONLY|O_CREAT|mid; //(open for writing/create/appen or truncate)
 
-        out_fds[i]=open(output_files[i].path, flags, 0644);
+        out_fds[i]=open(output_files[i].path, flags, 0644); // owner: r/w, group: r, others; read
         if (out_fds[i]<0) // if cant create a file to write
         {
             printf("cshell: unable to create file for writing\n"); 
@@ -169,17 +169,17 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
 
     const char *raw_cmd = argv[0]; // read command from argv
 
-    int skip_cwd = 0; //skip the cwd? 
+    int skip_cwd = 0; //skip the cwd since %
     const char *cmd_name = raw_cmd;
 
-    if (raw_cmd[0] == '%') // means DONT current dir
+    if (raw_cmd[0] == '%') // means DONT search curr dir first
     {
         skip_cwd = 1; // skip cwd
         cmd_name = raw_cmd + 1; 
         argv[0] = (char *)cmd_name; //argv must contain command with %
     }
 
-    //fulle executable path
+    //fully executable path
 
     char *exec_path = NULL;
 
@@ -282,20 +282,21 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
     }
 
     pid_t pid=fork(); // create a child process
-    if (pid==0) 
+    if (pid==0)  //childddd
     {
-        setpgid(0, 0);
+        setpgid(0, 0); //new process group for chuld (necessary for job control)
 
         if(is_bg) 
         {
-            close(sync_pfd[1]);
+            close(sync_pfd[1]); //chil waits till parent writes one byte
 
             char ch;
             ssize_t r=read(sync_pfd[0], &ch, 1);
             (void)r;
-            close(sync_pfd[0]);
+            close(sync_pfd[0]); //done with synchronization pipeline
         }
 
+        //resets the signals: ctrl z shld NOT SUSPEND SHELL, bt it shld suspend child
         signal(SIGINT, SIG_DFL);
         signal(SIGTSTP, SIG_DFL);
         signal(SIGTTIN, SIG_DFL);
@@ -311,7 +312,7 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
                 close(in_fd);
             }
         } 
-        else if (num_inputs > 1) 
+        else if (num_inputs > 1) //multiple input rdir (echo hi > a.txt > b.txt)
         {
             int pfd[2]; // if more than one file, combine contents via pipe
 
@@ -399,13 +400,13 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
             }
         }
 
-        execv(exec_path, argv); 
+        execv(exec_path, argv); //child is requested program (ls -l, so exec path os /usr/bin/ls)
         perror("cshell"); // if exec succeds, then this line isnt run
         exit(1);
     } 
-    else if (pid > 0) 
+    else if (pid > 0) //parent
     {
-        setpgid(pid, pid);
+        setpgid(pid, pid); //put in diff process group
 
         // child inherited output file descriptors durin fork
         for (int i = 0; i < num_outputs; i++) 
@@ -415,20 +416,20 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
 
         if (is_bg) 
         {
-            close(sync_pfd[0]);
-            printf("[%d] %d\n", job_id, (int)pid);
+            close(sync_pfd[0]); //closes read
+            printf("[%d] %d\n", job_id, (int)pid); //print job info
             fflush(stdout);
-            ssize_t w = write(sync_pfd[1], "1", 1);
+            ssize_t w = write(sync_pfd[1], "1", 1); //signal child to continue
             (void)w;
             close(sync_pfd[1]);
 
-            jobs_add(job_id, pid, bg_cmd_name, full_cmd_str);
+            jobs_add(job_id, pid, bg_cmd_name, full_cmd_str); //add to job list(record bg job to shell job table)
         } 
-        else 
+        else //not bg
         {
             if (isatty(STDIN_FILENO)) 
             {
-                tcsetpgrp(STDIN_FILENO, pid);
+                tcsetpgrp(STDIN_FILENO, pid); //stdin is termial, so guven terminal to child proc grp
             }
 
             int status;
@@ -436,17 +437,17 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
 
             if (isatty(STDIN_FILENO)) 
             {
-                tcsetpgrp(STDIN_FILENO, getpgrp());
+                tcsetpgrp(STDIN_FILENO, getpgrp()); //gve terminal control to shell
             }
 
-            if (WIFSTOPPED(status)) 
+            if (WIFSTOPPED(status)) //detect stopped process
             {
-                int s_id = jobs_alloc_id();
-                const char *cnames[1] = { cmd_name };
+                int s_id = jobs_alloc_id(); //create job id for stopped jobs
+                const char *cnames[1] = { cmd_name }; 
                 pid_t pids[1] = { pid };
                 const char *disp_cmd = (full_cmd_str && full_cmd_str[0] != '\0') ? full_cmd_str : cmd_name;
-                jobs_add_stopped(s_id, pid, pids, cnames, 1, disp_cmd);
-                printf("[%d] + Stopped    %s\n", s_id, disp_cmd);
+                jobs_add_stopped(s_id, pid, pids, cnames, 1, disp_cmd); //save stopped process in job table
+                printf("[%d] + Stopped  %s\n", s_id, disp_cmd); //print Stopped job
                 fflush(stdout);
                 free(exec_path);
                 return 0;
@@ -473,7 +474,7 @@ static int execute_cmd_internal(const token_list_t *list, int is_bg, int job_id,
     return 1;
 }
 
-static void execute_stage_child(const token_list_t *list)
+static void execute_stage_child(const token_list_t *list) //executes one stage
 {
     if (list == NULL || list->count == 0) 
     {
@@ -482,7 +483,7 @@ static void execute_stage_child(const token_list_t *list)
 
     if (list->tokens[0].type == OP_WORD) 
     {
-        const char *cmd_name = list->tokens[0].text;
+        const char *cmd_name = list->tokens[0].text; //frst token : cmmand name
         if (strcmp(cmd_name, "hop") == 0) { hop(list); exit(0); }
         else if (strcmp(cmd_name, "reveal") == 0) { reveal(list); exit(0); }
         else if (strcmp(cmd_name, "peek") == 0) { peek(list); exit(0); }
@@ -493,6 +494,7 @@ static void execute_stage_child(const token_list_t *list)
         else if (strcmp(cmd_name, "spy") == 0) { spy_cmd(list); exit(0); }
         else if (strcmp(cmd_name, "snoop") == 0) { snoop_cmd(list); exit(0); }
     }
+    //so do cmd(ist); exit (0)
 
     char *argv[256];
     int argc = 0;
@@ -501,7 +503,7 @@ static void execute_stage_child(const token_list_t *list)
     typedef struct {
         const char *path;
         int is_append;
-    } redir_output_t;
+    } redir_output_t; //ouput files saved withi is_append flag for append or truncate
     redir_output_t output_files[256];
     int num_outputs = 0;
 
@@ -769,14 +771,14 @@ static void execute_stage_child(const token_list_t *list)
     execv(exec_path, argv);
     perror("cshell");
     exit(1);
-}
+} //ye jo poora code hai woh already kis function mein tah isse accja iska func bana ke ccall kr dete (BUT IM NOT HANGING THIS CUZ STUFF BREAKS AND I NEED TO STUDY FOR MIDSEMS :( (line 589 to 774))
 
 int execute_cmd(const token_list_t *list) 
 {
-    return execute_cmd_internal(list, 0, 0, NULL, NULL);
+    return execute_cmd_internal(list, 0, 0, NULL, NULL); //calls execute cmd internal with is_bg=0 so a fg process
 }
 
-int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str) 
+int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)  //execute pipeline in fg
 {
     if (list==NULL||list->count==0) 
     {
@@ -850,13 +852,13 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
                 return 1;
             }
         }
-        return execute_cmd_internal(list, 0, 0, NULL, full_cmd_str);
+        return execute_cmd_internal(list, 0, 0, NULL, full_cmd_str); //if one stage, jst call that command
     }
 
     // if multi stage pipeline setup
-    stage_t stages[256];
+    stage_t stages[256]; //array with all pipeline stages
     int stage_count=0;
-    size_t start_idx=0;
+    size_t start_idx=0; //where curr stage belongs
 
     for (size_t i=0; i<list->count; i++) 
     {
@@ -916,19 +918,19 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
         }
     }
 
-    pid_t pids[256];
-    for (int i=0; i<stage_count; i++) 
+    pid_t pids[256]; //create pipes
+    for (int i=0; i<stage_count; i++)  //num of pipes = no of stages-1
     {
-        pids[i] = fork();
+        pids[i] = fork(); //fork once per stage
         if (pids[i] == 0) 
         {
             if (i == 0) 
             {
-                setpgid(0, 0);
+                setpgid(0, 0); //frst proc grp
             } 
             else 
             {
-                setpgid(0, pids[0]);
+                setpgid(0, pids[0]); //join frst proc grp
             }
 
             int has_input_redir = 0;
@@ -941,7 +943,7 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
                 }
             }
             if (!has_input_redir && i > 0) {
-                dup2(pipes[i - 1][0], STDIN_FILENO);
+                dup2(pipes[i - 1][0], STDIN_FILENO); //i recives input from prev stage
             }
 
             int has_output_redir = 0;
@@ -954,31 +956,31 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
             }
             if (!has_output_redir && i < stage_count - 1) 
             {
-                dup2(pipes[i][1], STDOUT_FILENO);
+                dup2(pipes[i][1], STDOUT_FILENO); //receives output from prev stage
             }
 
-            for (int j=0; j<stage_count-1; j++) {
+            for (int j=0; j<stage_count-1; j++) { //close unused file descriptors
                 close(pipes[j][0]);
                 close(pipes[j][1]);
             }
 
-            token_list_t stage_list = {
+            token_list_t stage_list = { //stage token list (temp for jst this stage)
                 .tokens = stages[i].tokens,
                 .count = stages[i].count
             };
 
-            execute_stage_child(&stage_list);
+            execute_stage_child(&stage_list); //execute stage
             exit(0);
         }
         else 
         {
-            if (i == 0) 
+            if (i == 0) //frst proc becomes proc grp leader (inside the parent proc now)
             {
                 setpgid(pids[0], pids[0]);
             } 
             else 
             {
-                setpgid(pids[i], pids[0]);
+                setpgid(pids[i], pids[0]); //rest follow
             }
         }
     }
@@ -991,26 +993,26 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
 
     if (isatty(STDIN_FILENO)) 
     {
-        tcsetpgrp(STDIN_FILENO, pids[0]);
+        tcsetpgrp(STDIN_FILENO, pids[0]); //give terminal contril to the pielines proc grp
     }
 
     int any_stopped = 0;
     for (int i = 0; i < stage_count; i++) 
     {
         int status;
-        waitpid(pids[i], &status, WUNTRACED);
+        waitpid(pids[i], &status, WUNTRACED); //wait for each proc
         if (WIFSTOPPED(status)) 
         {
-            any_stopped = 1;
+            any_stopped = 1; //if stopped proc, remember
         }
     }
 
     if (isatty(STDIN_FILENO)) 
     {
-        tcsetpgrp(STDIN_FILENO, getpgrp());
+        tcsetpgrp(STDIN_FILENO, getpgrp()); //terminal control returns to shell
     }
 
-    if (any_stopped) 
+    if (any_stopped) //if stopped, save (like in a prev code, same implementation)
     {
         int s_id = jobs_alloc_id();
         const char *stage_cmds[256];
@@ -1019,7 +1021,7 @@ int execute_pipeline_fg(const token_list_t *list, const char *full_cmd_str)
             stage_cmds[i] = stages[i].tokens[0].text;
         }
         const char *disp = (full_cmd_str && full_cmd_str[0] != '\0') ? full_cmd_str : stages[0].tokens[0].text;
-        jobs_add_stopped(s_id, pids[0], pids, stage_cmds, stage_count, disp);
+        jobs_add_stopped(s_id, pids[0], pids, stage_cmds, stage_count, disp); //save stopped pipeline
         printf("[%d] + Stopped    %s\n", s_id, disp);
         fflush(stdout);
         return 0;
@@ -1045,16 +1047,16 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
     {
         if (list->tokens[k].type == OP_WORD) 
         {
-            raw_cmd = list->tokens[k].text;
+            raw_cmd = list->tokens[k].text;  //find command name
             break;
         }
     }
     if (raw_cmd[0] == '%') 
     {
-        raw_cmd++;
+        raw_cmd++; //remove % if present
     }
-    const char *slash = strrchr(raw_cmd, '/');
-    const char *cmd_name = slash ? slash + 1 : raw_cmd;
+    const char *slash = strrchr(raw_cmd, '/'); //find last slash
+    const char *cmd_name = slash ? slash + 1 : raw_cmd; // so if it has slash get stuff after slash, else jst command. So /usr/bin/ls: ls and grep : grep
 
     int num_stages = 1;
     for (size_t i = 0; i < list->count; i++) 
@@ -1069,7 +1071,7 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
         }
     }
 
-    if (num_stages == 1) 
+    if (num_stages == 1) //bg buildins MUST run in child
     {
         if (list->count > 0 && list->tokens[0].type == OP_WORD) 
         {
@@ -1080,7 +1082,7 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
                 strcmp(c_name, "ping") == 0 || strcmp(c_name, "spy") == 0 ||
                 strcmp(c_name, "snoop") == 0) 
             {
-                int sync_pfd[2];
+                int sync_pfd[2]; //synchronization pipe
                 if (pipe(sync_pfd) < 0) 
                 {
                     perror("cshell: pipe failed");
@@ -1095,13 +1097,13 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
                     close(sync_pfd[1]);
                     return 0;
                 }
-                if (pid == 0) 
+                if (pid == 0) //so fork, and run builtin in child
                 {
                     close(sync_pfd[1]);
                     setpgid(0, 0);
 
                     char ch;
-                    ssize_t r = read(sync_pfd[0], &ch, 1);
+                    ssize_t r = read(sync_pfd[0], &ch, 1); //parent starts job so child WAITS
                     (void)r;
                     close(sync_pfd[0]);
 
@@ -1124,9 +1126,9 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
 
                 setpgid(pid, pid);
                 close(sync_pfd[0]);
-                printf("[%d] %d\n", job_id, (int)pid);
+                printf("[%d] %d\n", job_id, (int)pid); //parent prints job
                 fflush(stdout);
-                ssize_t w = write(sync_pfd[1], "1", 1);
+                ssize_t w = write(sync_pfd[1], "1", 1); //child proceeds
                 (void)w;
                 close(sync_pfd[1]);
 
@@ -1136,6 +1138,14 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
         }
         return execute_cmd_internal(list, 1, job_id, cmd_name, full_cmd_str);
     }
+//again do:
+//split into s=tages
+//create pipes
+//fork each
+//connect to stdin/stdout
+//create one proc grp
+//sync childeren
+//regster pipeline as ONE JOB
 
     stage_t stages[256];
     int stage_count = 0;
@@ -1199,8 +1209,8 @@ int execute_pipeline_bg(const token_list_t *list, int job_id, const char *full_c
             return 0;
         }
     }
-
-    int sync_pfd[2];
+//same stuff repeated (comments to explain in prev instance of the code)
+    int sync_pfd[2]; 
     if (pipe(sync_pfd) < 0) 
     {
         perror("cshell: pipe failed");
