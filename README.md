@@ -59,4 +59,5 @@ MAX_MEM_FIES: 512
 reset ticks used on sleep in mlfq    
 max fd ames to store in spy.c : 512
 max len of of paths in spy.c : 256 
+max len of syscall name : 64
 

@@ -122,7 +122,7 @@ static int is_non_negative_int(const char *str)  //same as spy.c
     return 1;
 }
 
-static int compare_sys_stats(const void *a,const void *b) //for qsort
+static int compare_sys_stats(const void *a,const void *b) //for qsort based on order of when syscall first called
 {
     const sys_stat_t *sa=(const sys_stat_t *)a;
     const sys_stat_t *sb=(const sys_stat_t *)b;
@@ -174,12 +174,12 @@ void snoop_cmd(const token_list_t *list)
     }
 
     pid_t target_pid=-1; //haven't selected a process yet
-    int is_attach=0; // 0 is for new omand, 1 for attaching to new process
+    int is_attach=0; // 0 is for new command, 1 for attaching to new process
 
     num_syscalls_tracked=0;
     first_seen_counter=0;
 
-    if (strcmp(list->tokens[1].text,"-p")==0) //then must be exactly3 tokens 
+    if (strcmp(list->tokens[1].text,"-p")==0) //if found -p flag
     {
         if (list->count!=3||!is_non_negative_int(list->tokens[2].text)) 
         {
@@ -190,28 +190,28 @@ void snoop_cmd(const token_list_t *list)
         is_attach = 1; //attach to existing process
 
         char proc_path[256];
-        snprintf(proc_path, sizeof(proc_path), "/proc/%d", (int)target_pid);
+        snprintf(proc_path, sizeof(proc_path), "/proc/%d", (int)target_pid); //proc path will be proc/<pid>
 
         //process doesnt exist
-        if (access(proc_path, F_OK)!=0) 
+        if (access(proc_path, F_OK)!=0) //0 if pid wrong or terminated
         {
             printf("snoop: no such process\n");
             return;
         }
 
-        //attach to an existing rocess
+        //attach to an existing process
         if (ptrace(PTRACE_ATTACH, target_pid, NULL, NULL)<0) 
         {
             printf("snoop: no such process\n");
             return;
         }
 
-        int status; //wait until targe process stops cuz of ptrace_attach
-        waitpid(target_pid, &status, 0);
+        int status; //wait until target process stops cuz of ptrace_attach
+        waitpid(target_pid, &status, 0); //mandatory for syncing when using ptrace
     } 
     else 
     {
-        token_list_t cmd_tokens={.tokens = &list->tokens[1],.count = list->count - 1}; // execute tokens after snoop
+        token_list_t cmd_tokens={.tokens = &list->tokens[1],.count = list->count - 1}; // tokens after snoop
         const char *raw_cmd=cmd_tokens.tokens[0].text; //get command name
         char *exec_path=NULL;
 
@@ -222,7 +222,8 @@ void snoop_cmd(const token_list_t *list)
                 exec_path = strdup(raw_cmd); //strdup allocates mem and copiues string
             }
         } 
-        else //search for / inside path
+        else //search for / inside path:
+        // if the command does not contain a slash (e.g., just sleep or ls), it needs to look it up in the system's PATH environment variable.
         {
             const char *env_path=getenv("PATH");
             if(env_path) 
@@ -299,32 +300,32 @@ void snoop_cmd(const token_list_t *list)
 
         if (WIFEXITED(status)||WIFSIGNALED(status)) 
         {
-            break; //nothing left to trace
+            break; //nothing left to trace (exited or killed by signal)
         }
 
         if (WIFSTOPPED(status)) 
         {
             int sig=WSTOPSIG(status); //get signal that cause process to stop
-            if (sig==(SIGTRAP | 0x80)||sig==SIGTRAP) 
+            if (sig==(SIGTRAP | 0x80)||sig==SIGTRAP) //means proc stopped sue to trace trap
             {
                 struct user_regs_struct regs; //struct with cpu register values
 
-                if (ptrace(PTRACE_GETREGS, target_pid, 0, &regs)==0)  //give registers of traced process
+                if (ptrace(PTRACE_GETREGS, target_pid, 0, &regs)==0)  //give register values of target process
                 {
                     if (in_syscall==0) 
                     {
-                        current_sys_num=regs.orig_rax;
+                        current_sys_num=regs.orig_rax; //grab syscall number
                         clock_gettime(CLOCK_MONOTONIC, &start_ts); //start time record
                         in_syscall=1;
                     } 
                     else 
                     {
                         struct timespec end_ts;
-                        clock_gettime(CLOCK_MONOTONIC,&end_ts);
-                        double duration=(end_ts.tv_sec-start_ts.tv_sec)+(end_ts.tv_nsec-start_ts.tv_nsec)/1e9;
-                        if (current_sys_num>=0) //if syscall hnumber valid 
+                        clock_gettime(CLOCK_MONOTONIC,&end_ts); //rec end time
+                        double duration=(end_ts.tv_sec-start_ts.tv_sec)+(end_ts.tv_nsec-start_ts.tv_nsec)/1e9; //elapsed time (ns to s)
+                        if (current_sys_num>=0) 
                         {
-                            add_syscall_time(current_sys_num, duration);
+                            add_syscall_time(current_sys_num, duration); //log into stats array 
                         }
                         in_syscall=0;
                     }
@@ -335,16 +336,16 @@ void snoop_cmd(const token_list_t *list)
 
     if(is_attach) 
     {
-        ptrace(PTRACE_DETACH, target_pid, NULL, NULL); //stop tracing the process ad detach from it
+        ptrace(PTRACE_DETACH, target_pid, NULL, NULL); //stop tracing the process and detach from it (safely)
     }
 
     qsort(sys_stats, num_syscalls_tracked, sizeof(sys_stat_t), compare_sys_stats); //sort sys stats array
 
-    printf("%-11s %-7s %s\n", "syscall", "calls", "time");
+    printf("%-20s %-7s %s\n", "syscall", "calls", "time");
 
     for (int i=0; i<num_syscalls_tracked; i++) 
     {
-        printf("%-11s %-7d %.3fs\n",sys_stats[i].name,sys_stats[i].calls,sys_stats[i].total_time); //final res
+        printf("%-20s %-7d %.3fs\n",sys_stats[i].name,sys_stats[i].calls,sys_stats[i].total_time); //final res
     }
     fflush(stdout);
 }
