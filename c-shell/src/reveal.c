@@ -25,7 +25,7 @@ int cmp_names(const void *a, const void *b)
 void reveal_init(const char *home_dir) 
 {
     strncpy(reveal_shell_home, home_dir, PATH_MAX - 1);
-    reveal_shell_home[PATH_MAX - 1] = '\0';
+    reveal_shell_home[PATH_MAX - 1] = '\0'; //so ~ knows where to point
 }
 
 // resolve target path shortcuts like ., ~, .., or -
@@ -34,7 +34,7 @@ int resolve_target(const char *arg, char *out, size_t outsize)
     if (arg == NULL || strcmp(arg, ".") == 0) 
     {
         // if cwd or no args specified
-        return getcwd(out, outsize) != NULL;
+        return getcwd(out, outsize) != NULL; //get cwd
     }
 
     if (strcmp(arg, "~") == 0) 
@@ -48,8 +48,8 @@ int resolve_target(const char *arg, char *out, size_t outsize)
         char cwd[PATH_MAX];
         if (getcwd(cwd, sizeof(cwd)) == NULL) return 0; // get current dir
         char tmp[PATH_MAX + 4]; // temp path buffer
-        snprintf(tmp, sizeof(tmp), "%s/..", cwd);  // build parent path 
-        char *rp = realpath(tmp, NULL); // resolve actual path
+        snprintf(tmp, sizeof(tmp), "%s/..", cwd);  // build parent path (so it makes cwd=a/b into a/b/..)
+        char *rp = realpath(tmp, NULL); // resolve actual path gets a/b
         if (rp == NULL) return 0; // fail if realpath errors out
         snprintf(out, outsize, "%s", rp);
         free(rp);
@@ -64,13 +64,13 @@ int resolve_target(const char *arg, char *out, size_t outsize)
         return 1;
     }
 
-    // absolute or relative path lookup
+    // gets absolite path from root dir
     char *rp = realpath(arg, NULL);
     if (rp == NULL) return 0;
 
     // check if it's actually a valid directory
     struct stat st;
-    if (stat(rp, &st) != 0 || !S_ISDIR(st.st_mode)) {
+    if (stat(rp, &st) != 0 || !S_ISDIR(st.st_mode)) { //stat fetches metadata (makes sure we can acccess it)
         free(rp);
         return 0;
     }
@@ -85,7 +85,7 @@ void reveal_list_dir(const char *dir_path, const char *prefix, int flag_a, int f
     DIR *d = opendir(dir_path); // open target directory stream
     if (d == NULL) return;
 
-    size_t cap = 64, count = 0; // track dynamic array capacity and item count
+    size_t cap = 64, count = 0; // track dynamic array capacity and item count for storing all fileneames
     char **names = malloc(sizeof(char *) * cap);
     if (names == NULL) 
     { 
@@ -118,10 +118,10 @@ void reveal_list_dir(const char *dir_path, const char *prefix, int flag_a, int f
     // print files and recursively traverse directories if flag_t is set
     for (size_t i = 0; i < count; i++) {
         char full[PATH_MAX];
-        snprintf(full, sizeof(full), "%s/%s", dir_path, names[i]);
+        snprintf(full, sizeof(full), "%s/%s", dir_path, names[i]); //builds full file path
 
         struct stat st;
-        int is_dir = (stat(full, &st) == 0 && S_ISDIR(st.st_mode));
+        int is_dir = (stat(full, &st) == 0 && S_ISDIR(st.st_mode)); //checks if its a dir
 
         if (flag_t) 
         {
@@ -180,7 +180,7 @@ void reveal(const token_list_t *list)
                 }
             }
         } else {
-            // only allow one path argument
+            // only allow one path argument (if not flag then path)
             if (target != NULL) {
                 printf("reveal: invalid syntax\n");
                 return;
@@ -192,7 +192,7 @@ void reveal(const token_list_t *list)
     // resolve target directory path
     char resolved[PATH_MAX];
     if (!resolve_target(target, resolved, sizeof(resolved))) {
-        printf("reveal: no such directory\n");
+        printf("reveal: no such directory\n"); //translates .. , ~ etc. to clean absolute path
         return;
     }
 
